@@ -91,11 +91,29 @@ python code/run_benchmark.py --benchmark BM_dataset --calculator chgnet --device
 # 全 calculator を逐次実行（GPU 推奨）
 python code/run_benchmark.py --benchmark MamunHighT2019 --calculator all --device cuda
 
-# 解析（parity plot + Excel レポート）
+# 解析（parity plot + Excel レポート + サマリ CSV）
 python code/analyze.py --benchmark MamunHighT2019
+
+# 可視化（catbench.org 風: 指標ヒートマップ表 + Pareto 散布図）
+python code/visualize.py --benchmark MamunHighT2019
 ```
 
 出力は `result/<benchmark>/<calculator>/` に格納されます。
+
+### 可視化（`code/visualize.py`）
+
+`analyze.py` が出力する **`result/<benchmark>/<benchmark>_summary.csv`** を読み、
+[catbench.org](https://catbench.org) 風の図を `result/<benchmark>/viz/` に生成します。
+
+- **指標ヒートマップ表**: 1 行 = 1 モデル、列 = 各指標（MAE / Normal% / anomaly 内訳 /
+  ADwT / AMDwT / Time/step 等）。各列を **viridis** で独立に色付け（明るい = 良い）し、
+  セルに実数値を表示、colorbar 付き。
+- **Pareto 散布図**: Time/step vs Normal MAE（Accuracy-Efficiency）と
+  Time/step vs Normal rate%（Robustness-Efficiency）。点は MAE で viridis 着色。
+- 出力: 静的 `*_heatmap.{png,pdf}` / `*_scatter.{png,pdf}` と
+  インタラクティブ `*_dashboard.html`（plotly）。
+
+> `analyze.py` を先に実行してサマリ CSV を作成してください。
 
 ## TSUBAME4 でのジョブ投入
 

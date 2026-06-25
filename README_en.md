@@ -91,9 +91,29 @@ python code/run_benchmark.py --benchmark BM_dataset --calculator chgnet --device
 # all calculators, sequentially (GPU recommended)
 python code/run_benchmark.py --benchmark MamunHighT2019 --calculator all --device cuda
 
-# analysis (parity plots + Excel report)
+# analysis (parity plots + Excel report + summary CSV)
 python code/analyze.py --benchmark MamunHighT2019
+
+# visualization (catbench.org-style: metric heatmap-table + Pareto scatter)
+python code/visualize.py --benchmark MamunHighT2019
 ```
+
+### Visualization (`code/visualize.py`)
+
+Reads the **`result/<benchmark>/<benchmark>_summary.csv`** written by `analyze.py`
+and renders [catbench.org](https://catbench.org)-style figures into
+`result/<benchmark>/viz/`:
+
+- **Metric heatmap-table**: one row per model, one column per metric (MAE /
+  Normal% / anomaly breakdown / ADwT / AMDwT / Time/step ...). Each column is
+  colored independently with **viridis** (bright = better), the raw value is
+  printed in each cell, with a colorbar.
+- **Pareto scatter**: Time/step vs Normal MAE (Accuracy-Efficiency) and
+  Time/step vs Normal rate % (Robustness-Efficiency), points colored by MAE.
+- Outputs: static `*_heatmap.{png,pdf}` / `*_scatter.{png,pdf}` and an
+  interactive `*_dashboard.html` (plotly).
+
+> Run `analyze.py` first so the summary CSV exists.
 
 Output is written to `result/<benchmark>/<calculator>/`.
 
