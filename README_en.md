@@ -108,10 +108,11 @@ and renders [catbench.org](https://catbench.org)-style figures into
   Normal% / anomaly breakdown / ADwT / AMDwT / Time/step ...). Each column is
   colored independently with **viridis** (bright = better), the raw value is
   printed in each cell, with a colorbar.
-- **Pareto scatter**: Time/step vs Normal MAE (Accuracy-Efficiency) and
-  Time/step vs Normal rate % (Robustness-Efficiency), points colored by MAE.
-- Outputs: static `*_heatmap.{png,pdf}` / `*_scatter.{png,pdf}` and an
-  interactive `*_dashboard.html` (plotly).
+- **Pareto scatter**: Time/step vs Total MAE, Time/step vs Normal MAE
+  (Accuracy-Efficiency), and Time/step vs Normal rate % (Robustness-Efficiency),
+  points colored by MAE.
+- Outputs: static `*_heatmap.png` / `*_scatter.png` and an interactive
+  `*_dashboard.html` (plotly).
 
 > Run `analyze.py` first so the summary CSV exists.
 

@@ -108,9 +108,10 @@ python code/visualize.py --benchmark MamunHighT2019
 - **指標ヒートマップ表**: 1 行 = 1 モデル、列 = 各指標（MAE / Normal% / anomaly 内訳 /
   ADwT / AMDwT / Time/step 等）。各列を **viridis** で独立に色付け（明るい = 良い）し、
   セルに実数値を表示、colorbar 付き。
-- **Pareto 散布図**: Time/step vs Normal MAE（Accuracy-Efficiency）と
-  Time/step vs Normal rate%（Robustness-Efficiency）。点は MAE で viridis 着色。
-- 出力: 静的 `*_heatmap.{png,pdf}` / `*_scatter.{png,pdf}` と
+- **Pareto 散布図**: Time/step vs Total MAE、Time/step vs Normal MAE
+  （Accuracy-Efficiency）、Time/step vs Normal rate%（Robustness-Efficiency）。
+  点は MAE で viridis 着色。
+- 出力: 静的 `*_heatmap.png` / `*_scatter.png` と
   インタラクティブ `*_dashboard.html`（plotly）。
 
 > `analyze.py` を先に実行してサマリ CSV を作成してください。

@@ -154,8 +154,28 @@ def heatmap_matplotlib(df: pd.DataFrame, metrics, out_base: Path) -> None:
 
     fig.tight_layout()
     fig.savefig(out_base.with_suffix(".png"), dpi=300, bbox_inches="tight")
-    fig.savefig(out_base.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
+
+
+def _scatter_panels(df: pd.DataFrame) -> list[tuple[str, str, str]]:
+    """Build the list of (ycol, ylabel, title) scatter panels that have data."""
+
+    panels: list[tuple[str, str, str]] = []
+    if "MAE_total (eV)" in df.columns and df["MAE_total (eV)"].notna().any():
+        panels.append(("MAE_total (eV)", "MAE total (eV)", "Accuracy (total)-Efficiency"))
+    if "MAE_normal (eV)" in df.columns and df["MAE_normal (eV)"].notna().any():
+        panels.append(("MAE_normal (eV)", "MAE normal (eV)", "Accuracy (normal)-Efficiency"))
+    if "Normal rate (%)" in df.columns and df["Normal rate (%)"].notna().any():
+        panels.append(("Normal rate (%)", "Normal rate (%)", "Robustness-Efficiency"))
+    return panels
+
+
+def _color_column(df: pd.DataFrame) -> str:
+    """Metric used to color scatter points (MAE_total preferred, else accuracy)."""
+
+    if "MAE_total (eV)" in df.columns and df["MAE_total (eV)"].notna().any():
+        return "MAE_total (eV)"
+    return _accuracy_column(df)
 
 
 def _scatter_ax(ax, df, xcol, ycol, color_col, title, ylabel):
@@ -180,28 +200,28 @@ def _scatter_ax(ax, df, xcol, ycol, color_col, title, ylabel):
 
 
 def scatter_matplotlib(df: pd.DataFrame, out_base: Path) -> None:
-    acc = _accuracy_column(df)
     time_col = "Time_per_step (s)"
     if time_col not in df.columns:
         print(f"  (skip scatter: '{time_col}' not in summary)")
         return
 
-    panels = [(acc, acc.replace(" (eV)", "") + " (eV)", "Accuracy-Efficiency")]
-    if "Normal rate (%)" in df.columns:
-        panels.append(("Normal rate (%)", "Normal rate (%)", "Robustness-Efficiency"))
+    panels = _scatter_panels(df)
+    if not panels:
+        print("  (skip scatter: no MAE / Normal-rate columns)")
+        return
 
-    fig, axes = plt.subplots(1, len(panels), figsize=(6.5 * len(panels), 5.2))
+    color_col = _color_column(df)
+    fig, axes = plt.subplots(1, len(panels), figsize=(6.0 * len(panels), 5.2))
     if len(panels) == 1:
         axes = [axes]
     last = None
     for ax, (ycol, ylabel, title) in zip(axes, panels):
-        last = _scatter_ax(ax, df, time_col, ycol, acc, title, ylabel)
+        last = _scatter_ax(ax, df, time_col, ycol, color_col, title, ylabel)
     if last is not None:
         cbar = fig.colorbar(last, ax=axes, fraction=0.04, pad=0.02)
-        cbar.set_label(acc)
+        cbar.set_label(color_col)
     fig.suptitle("Pareto: accuracy / robustness vs cost", fontsize=11)
     fig.savefig(out_base.with_suffix(".png"), dpi=300, bbox_inches="tight")
-    fig.savefig(out_base.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
 
 
@@ -213,8 +233,8 @@ def interactive_html(df: pd.DataFrame, metrics, out_html: Path, title: str) -> N
     from plotly.subplots import make_subplots
 
     models = df["MLIP_name"].astype(str).tolist()
-    acc = _accuracy_column(df)
     time_col = "Time_per_step (s)"
+    color_col = _color_column(df)
 
     # Heatmap matrix (rows reversed so the best/first model is on top).
     z, text = [], []
@@ -224,20 +244,17 @@ def interactive_html(df: pd.DataFrame, metrics, out_html: Path, title: str) -> N
     z = np.array(z).T
     text = np.array(text).T
 
-    has_scatter = time_col in df.columns
-    specs = [[{"type": "heatmap"}]]
-    titles = ["Metrics (viridis: bright = better, per column)"]
-    if has_scatter:
-        specs = [[{"type": "heatmap"}], [{"type": "scatter"}], [{"type": "scatter"}]]
-        titles = [
-            "Metrics (viridis: bright = better, per column)",
-            "Accuracy-Efficiency: time/step vs MAE",
-            "Robustness-Efficiency: time/step vs Normal rate",
-        ]
+    panels = _scatter_panels(df) if time_col in df.columns else []
+    n_rows = 1 + len(panels)
+    specs = [[{"type": "heatmap"}]] + [[{"type": "scatter"}] for _ in panels]
+    titles = ["Metrics (viridis: bright = better, per column)"] + [
+        f"{title}: time/step vs {ylabel}" for _, ylabel, title in panels
+    ]
+    row_heights = [0.5] + [0.5 / len(panels)] * len(panels) if panels else [1.0]
+
     fig = make_subplots(
-        rows=len(specs), cols=1, specs=specs, subplot_titles=titles,
-        vertical_spacing=0.07,
-        row_heights=[0.5] + [0.25] * (len(specs) - 1) if has_scatter else [1.0],
+        rows=n_rows, cols=1, specs=specs, subplot_titles=titles,
+        vertical_spacing=0.06, row_heights=row_heights,
     )
 
     fig.add_trace(
@@ -245,36 +262,32 @@ def interactive_html(df: pd.DataFrame, metrics, out_html: Path, title: str) -> N
             z=z[::-1], x=[m[1] for m in metrics], y=models[::-1],
             text=text[::-1], texttemplate="%{text}", textfont={"size": 9},
             colorscale="Viridis", zmin=0, zmax=1,
-            colorbar=dict(title="score (1=best)", len=0.5, y=0.8),
+            colorbar=dict(title="score (1=best)", len=0.45, y=0.78),
         ),
         row=1, col=1,
     )
 
-    if has_scatter:
-        def _scatter(ycol, row, ytitle):
-            fig.add_trace(
-                go.Scatter(
-                    x=df[time_col], y=df[ycol], mode="markers+text",
-                    text=models, textposition="top center", textfont={"size": 8},
-                    marker=dict(
-                        size=12, color=df[acc], colorscale="Viridis",
-                        showscale=(row == 2), line=dict(width=0.7, color="black"),
-                        colorbar=dict(title=acc, len=0.25, y=0.28) if row == 2 else None,
-                    ),
-                    hovertext=models, name=ytitle,
+    for idx, (ycol, ylabel, _title) in enumerate(panels):
+        row = idx + 2
+        fig.add_trace(
+            go.Scatter(
+                x=df[time_col], y=df[ycol], mode="markers+text",
+                text=models, textposition="top center", textfont={"size": 8},
+                marker=dict(
+                    size=12, color=df[color_col], colorscale="Viridis",
+                    showscale=(idx == 0), line=dict(width=0.7, color="black"),
+                    colorbar=dict(title=color_col, len=0.4, y=0.25) if idx == 0 else None,
                 ),
-                row=row, col=1,
-            )
-            fig.update_xaxes(title_text="Time per step (s)", row=row, col=1)
-            fig.update_yaxes(title_text=ytitle, row=row, col=1)
-
-        _scatter(acc, 2, acc)
-        if "Normal rate (%)" in df.columns:
-            _scatter("Normal rate (%)", 3, "Normal rate (%)")
+                hovertext=models, name=ylabel,
+            ),
+            row=row, col=1,
+        )
+        fig.update_xaxes(title_text="Time per step (s)", row=row, col=1)
+        fig.update_yaxes(title_text=ylabel, row=row, col=1)
 
     fig.update_layout(
         title=title, showlegend=False,
-        height=520 + (420 if has_scatter else 0) + 14 * len(models),
+        height=520 + 320 * len(panels) + 14 * len(models),
         width=max(900, 70 * len(metrics) + 300),
         template="plotly_white",
     )
@@ -336,7 +349,7 @@ def main() -> int:
     if not args.no_static:
         heatmap_matplotlib(df, metrics, outdir / f"{args.benchmark}_heatmap")
         scatter_matplotlib(df, outdir / f"{args.benchmark}_scatter")
-        print("  static : heatmap.{png,pdf}, scatter.{png,pdf}")
+        print("  static : heatmap.png, scatter.png")
 
     if not args.no_html:
         interactive_html(
