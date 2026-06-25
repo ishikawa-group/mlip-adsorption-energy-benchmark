@@ -38,19 +38,41 @@ def _link_raw_data(bench_dir: Path, data_dir: Path, benchmark: str) -> None:
 
     We symlink to the shared cache so the dataset is downloaded only once and
     every calculator for this benchmark reuses it.
+
+    This must be **idempotent and safe under concurrency**: on the cluster many
+    jobs for the same benchmark run in parallel and share this single link. The
+    key is to do nothing when the link already points at the cache (so siblings
+    never race on unlink/recreate); the retry loop only covers the first-time
+    creation window.
     """
 
     bench_dir.mkdir(parents=True, exist_ok=True)
     link = bench_dir / "raw_data"
     source = (data_dir / "raw_data").resolve()
+    source_str = str(source)
 
-    if link.is_symlink() or link.exists():
-        # Refresh stale links; leave a real directory in place untouched.
-        if link.is_symlink():
-            link.unlink()
-        else:
+    for _ in range(5):
+        try:
+            if link.is_symlink():
+                if os.path.realpath(link) == source_str:
+                    return  # already correct -> no mutation, no race
+                link.unlink()
+            elif link.exists():
+                return  # a real directory is here; leave it untouched
+            link.symlink_to(source, target_is_directory=True)
             return
-    link.symlink_to(source, target_is_directory=True)
+        except FileExistsError:
+            # A sibling job created the link between our check and symlink call.
+            if link.is_symlink() and os.path.realpath(link) == source_str:
+                return
+            # Wrong/stale link created concurrently; retry to fix it.
+        except FileNotFoundError:
+            # A sibling removed it between our check and unlink; retry.
+            continue
+
+    # Final attempt; surface any genuine error.
+    if not (link.is_symlink() or link.exists()):
+        link.symlink_to(source, target_is_directory=True)
 
 
 def _relocate_calculator_output(bench_dir: Path, calculator: str, mode: str) -> Path:
