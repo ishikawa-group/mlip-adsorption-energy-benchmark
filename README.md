@@ -138,7 +138,17 @@ python script/tsubame4/submit_tsubame_jobs.py \
 - ログは `result/<benchmark>/log/tsubame_jobs/<calculator>/` に出力
 
 主な引数: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal`（preset 上書き）,
-`--group`, `--save-files`, `--dry-run`。
+`--group`, `--save-files`, `--cueq`, `--dry-run`。
+
+`--cueq` は SevenNet の CuEquivariance を有効化します（cuequivariance 導入環境が必要）。
+結果は **`<label>-cueq`**（例 `sevennet-mpa-cueq`）の別ディレクトリ・別ジョブに保存され、
+非 cueq の結果を上書きしません。例:
+
+```bash
+python script/tsubame4/submit_tsubame_jobs.py \
+    --benchmark MamunHighT2019,ComerGeneralized2024 --device cuda --cueq \
+    --calculator "sevennet:modal=mpa,sevennet:modal=omat24,sevennet:modal=matpes_pbe,sevennet:modal=oc20,sevennet:modal=oc22,sevennet:modal=matpes_r2scan"
+```
 
 > **inode（ファイル数）に関する注意**
 > CatBench は `save_files=True` だと構造ごとに `log/<key>/`・`traj/<key>/` を作成し、

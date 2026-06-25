@@ -124,6 +124,7 @@ def build_calculator(
     task: str | None = None,
     modal: str | None = None,
     dispersion: bool = False,
+    enable_cueq: bool = False,
     extra_kwargs: dict[str, Any] | None = None,
 ):
     """Instantiate the ASE calculator for ``preset_name``.
@@ -132,6 +133,9 @@ def build_calculator(
     explicit ``model`` / ``task`` / ``modal`` arguments (None means "keep the
     preset default"). ``device`` is forwarded to the backend; ``"auto"`` lets
     ase-calculator-kit pick cuda > mps > cpu.
+
+    ``enable_cueq`` turns on CuEquivariance acceleration; it is only meaningful
+    for the SevenNet backend, so it is injected only there.
     """
 
     if preset_name not in CALCULATOR_PRESETS:
@@ -150,6 +154,8 @@ def build_calculator(
         kwargs["modal"] = modal
     if dispersion:
         kwargs["dispersion"] = True
+    if enable_cueq and preset.backend == "sevennet":
+        kwargs["enable_cueq"] = True
     if extra_kwargs:
         kwargs.update(extra_kwargs)
 

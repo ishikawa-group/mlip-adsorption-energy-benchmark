@@ -81,6 +81,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--modal", default=None, help="Override SevenNet modal.")
     parser.add_argument("--dispersion", action="store_true")
     parser.add_argument(
+        "--cueq",
+        action="store_true",
+        help=(
+            "Enable CuEquivariance (SevenNet only). Results are saved under a "
+            "separate '<label>-cueq' folder and the jobs are named accordingly, "
+            "so they never overwrite the non-cueq runs."
+        ),
+    )
+    parser.add_argument(
         "--save-files",
         action="store_true",
         help=(
@@ -121,6 +130,7 @@ def main() -> int:
     print(f"Benchmarks  : {', '.join(benchmarks)}")
     print(f"Calculators : {', '.join(j.label for j in jobs)}")
     print(f"Device      : {args.device}")
+    print(f"CuEquivar.  : {bool(args.cueq)} (label suffix '-cueq')")
     print(f"Save files  : {bool(args.save_files)} (per-structure log/traj)")
     print(f"Group       : {args.group}")
     print(f"Result dir  : {result_dir}")
@@ -137,19 +147,22 @@ def main() -> int:
             # passed through CALCULATOR so the run script reproduces this exact
             # variant; the label keys the job name and result folder.
             spec = spec_to_string(job)
+            # CuEquivariance runs use a separate '<label>-cueq' identity so they
+            # never clash with the non-cueq results/jobs.
+            label = job.label + ("-cueq" if args.cueq else "")
 
             # Resume safety: a finished run has been relocated to
             # result/<benchmark>/<label>/<label>_result.json. Skip it so a
             # re-submission only resumes/finishes the jobs that timed out
             # (CatBench auto-resumes those from their structure_cache.json).
-            final_result = result_dir / benchmark / job.label / f"{job.label}_result.json"
+            final_result = result_dir / benchmark / label / f"{label}_result.json"
             if final_result.exists() and not args.rerun_completed:
-                print(f"Skipping (already completed): {benchmark} / {job.label}")
+                print(f"Skipping (already completed): {benchmark} / {label}")
                 skipped += 1
                 continue
 
-            job_name = f"mlipads_{benchmark}_{job.label}"[:120]
-            log_dir = result_dir / benchmark / "log" / "tsubame_jobs" / job.label
+            job_name = f"mlipads_{benchmark}_{label}"[:120]
+            log_dir = result_dir / benchmark / "log" / "tsubame_jobs" / label
             stdout_log = log_dir / f"{job_name}_stdout.log"
             stderr_log = log_dir / f"{job_name}_stderr.log"
             if not args.dry_run:
@@ -177,6 +190,7 @@ def main() -> int:
             env["N_SEEDS"] = str(int(args.n_seeds))
             env["MODE"] = str(args.mode)
             env["DISPERSION"] = "true" if args.dispersion else "false"
+            env["CUEQ"] = "true" if args.cueq else "false"
             env["SAVE_FILES"] = "true" if args.save_files else "false"
             env["RESULT_DIR"] = str(result_dir)
             env["DATA_DIR"] = str(data_dir)
@@ -192,7 +206,7 @@ def main() -> int:
                 print("  Command:", " ".join(cmd))
                 print(
                     "  Env    : PROJECT_DIR, BENCHMARK, CALCULATOR, DEVICE, N_SEEDS, "
-                    "MODE, [MODEL], [TASK], [MODAL], DISPERSION, SAVE_FILES, "
+                    "MODE, [MODEL], [TASK], [MODAL], DISPERSION, CUEQ, SAVE_FILES, "
                     "RESULT_DIR, DATA_DIR"
                 )
                 submitted += 1

@@ -70,6 +70,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable D3 dispersion (for backends that support it).",
     )
+    parser.add_argument(
+        "--cueq",
+        action="store_true",
+        help=(
+            "Enable CuEquivariance acceleration (SevenNet only). Results are "
+            "saved under a separate '<label>-cueq' folder so they do not clash "
+            "with the non-cueq runs."
+        ),
+    )
     parser.add_argument("--f-crit-relax", type=float, default=0.05, help="Force crit (eV/A).")
     parser.add_argument("--n-crit-relax", type=int, default=999, help="Max relax steps.")
     parser.add_argument(
@@ -107,12 +116,14 @@ def main() -> int:
         model = job.overrides.get("model", args.model)
         task = job.overrides.get("task", args.task)
         modal = job.overrides.get("modal", args.modal)
-        print(f"---- Running: {args.benchmark} / {job.label} ----", flush=True)
+        # CuEquivariance runs go to a separate '<label>-cueq' folder.
+        label = job.label + ("-cueq" if args.cueq else "")
+        print(f"---- Running: {args.benchmark} / {label} ----", flush=True)
         try:
             out = run_adsorption_benchmark(
                 args.benchmark,
                 job.preset,
-                label=job.label,
+                label=label,
                 device=args.device,
                 n_seeds=args.n_seeds,
                 result_dir=args.result_dir,
@@ -121,6 +132,7 @@ def main() -> int:
                 task=task,
                 modal=modal,
                 dispersion=args.dispersion,
+                enable_cueq=args.cueq,
                 f_crit_relax=args.f_crit_relax,
                 n_crit_relax=args.n_crit_relax,
                 mode=args.mode,
@@ -129,7 +141,7 @@ def main() -> int:
             print(f"  -> done: {out}", flush=True)
         except Exception:  # keep going for the remaining calculators
             failures += 1
-            print(f"  -> FAILED for calculator {job.label!r}:", file=sys.stderr)
+            print(f"  -> FAILED for calculator {label!r}:", file=sys.stderr)
             traceback.print_exc()
 
     if failures:

@@ -141,7 +141,12 @@ python script/tsubame4/submit_tsubame_jobs.py \
 - Logs go to `result/<benchmark>/log/tsubame_jobs/<calculator>/`
 
 Key flags: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal` (preset
-overrides), `--group`, `--save-files`, `--dry-run`.
+overrides), `--group`, `--save-files`, `--cueq`, `--dry-run`.
+
+`--cueq` enables SevenNet's CuEquivariance acceleration (needs cuequivariance
+installed). Its results are saved under a separate **`<label>-cueq`** folder
+(e.g. `sevennet-mpa-cueq`) and separate jobs, so they never overwrite the
+non-cueq runs.
 
 > **Note on inodes (file count)**
 > With `save_files=True`, CatBench creates per-structure `log/<key>/` and

@@ -112,6 +112,7 @@ def run_adsorption_benchmark(
     task: str | None = None,
     modal: str | None = None,
     dispersion: bool = False,
+    enable_cueq: bool = False,
     f_crit_relax: float = 0.05,
     n_crit_relax: int = 999,
     mode: str = "basic",
@@ -162,6 +163,7 @@ def run_adsorption_benchmark(
             task=task,
             modal=modal,
             dispersion=dispersion,
+            enable_cueq=enable_cueq,
         )
         for _ in range(max(1, int(n_seeds)))
     ]
