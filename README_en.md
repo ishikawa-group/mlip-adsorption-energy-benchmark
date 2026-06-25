@@ -120,4 +120,14 @@ python script/tsubame4/submit_tsubame_jobs.py \
 - Logs go to `result/<benchmark>/log/tsubame_jobs/<calculator>/`
 
 Key flags: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal` (preset
-overrides), `--group`, `--dry-run`.
+overrides), `--group`, `--save-files`, `--dry-run`.
+
+> **Note on inodes (file count)**
+> With `save_files=True`, CatBench creates per-structure `log/<key>/` and
+> `traj/<key>/` directories. On large datasets (e.g. MamunHighT2019 with ~45k
+> adsorptions) this reaches tens of thousands of files per job and can exhaust
+> the shared filesystem's **inode quota** (`OSError: [Errno 122] Disk quota
+> exceeded`, even when free space remains). TSUBAME submission therefore
+> **omits per-structure files by default** (passes `--no-save-files`). Only the
+> small `*_result.json` files are written, which is enough for MAE/parity
+> analysis. Pass `--save-files` only when you need trajectories.

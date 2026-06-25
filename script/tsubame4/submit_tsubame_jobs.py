@@ -80,6 +80,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--task", default=None, help="Override UMA/fairchem task.")
     parser.add_argument("--modal", default=None, help="Override SevenNet modal.")
     parser.add_argument("--dispersion", action="store_true")
+    parser.add_argument(
+        "--save-files",
+        action="store_true",
+        help=(
+            "Write per-structure log/traj files. OFF by default: on large "
+            "datasets these create tens of thousands of files per job and can "
+            "exhaust the group-shared inode quota on Lustre."
+        ),
+    )
     parser.add_argument("--group", default=TSUBAME_GROUP, help="TSUBAME4 group (-g).")
     parser.add_argument("--result-dir", default=str(DEFAULT_RESULT_DIR))
     parser.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR))
@@ -103,6 +112,7 @@ def main() -> int:
     print(f"Benchmarks  : {', '.join(benchmarks)}")
     print(f"Calculators : {', '.join(j.label for j in jobs)}")
     print(f"Device      : {args.device}")
+    print(f"Save files  : {bool(args.save_files)} (per-structure log/traj)")
     print(f"Group       : {args.group}")
     print(f"Result dir  : {result_dir}")
     print(f"Data dir    : {data_dir}")
@@ -145,6 +155,7 @@ def main() -> int:
             env["N_SEEDS"] = str(int(args.n_seeds))
             env["MODE"] = str(args.mode)
             env["DISPERSION"] = "true" if args.dispersion else "false"
+            env["SAVE_FILES"] = "true" if args.save_files else "false"
             env["RESULT_DIR"] = str(result_dir)
             env["DATA_DIR"] = str(data_dir)
             # Global overrides only used as a fallback when the spec sets none.
@@ -159,7 +170,8 @@ def main() -> int:
                 print("  Command:", " ".join(cmd))
                 print(
                     "  Env    : PROJECT_DIR, BENCHMARK, CALCULATOR, DEVICE, N_SEEDS, "
-                    "MODE, [MODEL], [TASK], [MODAL], DISPERSION, RESULT_DIR, DATA_DIR"
+                    "MODE, [MODEL], [TASK], [MODAL], DISPERSION, SAVE_FILES, "
+                    "RESULT_DIR, DATA_DIR"
                 )
                 submitted += 1
                 continue

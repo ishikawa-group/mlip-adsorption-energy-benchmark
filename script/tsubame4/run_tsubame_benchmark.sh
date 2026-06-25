@@ -29,6 +29,10 @@ MODEL="${MODEL:-}"
 TASK="${TASK:-}"
 MODAL="${MODAL:-}"
 DISPERSION="${DISPERSION:-false}"
+# Per-structure log/traj files are OFF by default on the cluster: they create
+# tens of thousands of files per job and can exhaust the (group-shared) inode
+# quota on Lustre. Set SAVE_FILES=true only if you really need trajectories.
+SAVE_FILES="${SAVE_FILES:-false}"
 RESULT_DIR="${RESULT_DIR:-${PROJECT_DIR}/result}"
 DATA_DIR="${DATA_DIR:-${PROJECT_DIR}/data}"
 
@@ -43,6 +47,7 @@ echo "MODEL       : ${MODEL:-(preset default)}"
 echo "TASK        : ${TASK:-(preset default)}"
 echo "MODAL       : ${MODAL:-(preset default)}"
 echo "DISPERSION  : ${DISPERSION}"
+echo "SAVE_FILES  : ${SAVE_FILES}"
 echo "RESULT_DIR  : ${RESULT_DIR}"
 echo "DATA_DIR    : ${DATA_DIR}"
 echo "Start time  : $(date)"
@@ -83,6 +88,9 @@ if [ -n "${MODAL}" ]; then
 fi
 if [ "${DISPERSION}" = "true" ] || [ "${DISPERSION}" = "1" ]; then
   CMD+=(--dispersion)
+fi
+if [ "${SAVE_FILES}" != "true" ] && [ "${SAVE_FILES}" != "1" ]; then
+  CMD+=(--no-save-files)
 fi
 
 echo "Command: ${CMD[*]}"

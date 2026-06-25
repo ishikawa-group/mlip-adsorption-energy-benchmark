@@ -119,7 +119,16 @@ python script/tsubame4/submit_tsubame_jobs.py \
 - ログは `result/<benchmark>/log/tsubame_jobs/<calculator>/` に出力
 
 主な引数: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal`（preset 上書き）,
-`--group`, `--dry-run`。
+`--group`, `--save-files`, `--dry-run`。
+
+> **inode（ファイル数）に関する注意**
+> CatBench は `save_files=True` だと構造ごとに `log/<key>/`・`traj/<key>/` を作成し、
+> 大規模データ（例: MamunHighT2019 は ~45k 吸着）では 1 ジョブあたり数万ファイルに達して
+> 共有ファイルシステムの **inode クォータ**を使い切ります（`OSError: [Errno 122]
+> Disk quota exceeded`。容量に余裕があっても起きます）。
+> このため TSUBAME 投入は **既定で per-structure ファイルを出力しません**
+> （`run_benchmark.py` に `--no-save-files` を渡す）。結果は `*_result.json` 等の小さな
+> JSON のみで、MAE/parity 解析には十分です。trajectory が必要な場合のみ `--save-files` を付与。
 
 ## 英語版
 
