@@ -184,10 +184,11 @@ def _scatter_ax(ax, df, xcol, ycol, color_col, title, ylabel):
     c = df[color_col].to_numpy(dtype=float)
     mask = np.isfinite(x) & np.isfinite(y)
 
+    # Color by MAE with reversed viridis so that lower MAE (better) is brighter.
     sc = ax.scatter(
         x[mask], y[mask],
         c=np.where(np.isfinite(c[mask]), c[mask], np.nan),
-        cmap="viridis", s=90, edgecolor="black", linewidth=0.5, zorder=3,
+        cmap="viridis_r", s=90, edgecolor="black", linewidth=0.5, zorder=3,
     )
     for xi, yi, name in zip(x[mask], y[mask], df["MLIP_name"].astype(str)[mask]):
         ax.annotate(name, (xi, yi), fontsize=6.5, xytext=(4, 3),
@@ -219,7 +220,7 @@ def scatter_matplotlib(df: pd.DataFrame, out_base: Path) -> None:
         last = _scatter_ax(ax, df, time_col, ycol, color_col, title, ylabel)
     if last is not None:
         cbar = fig.colorbar(last, ax=axes, fraction=0.04, pad=0.02)
-        cbar.set_label(color_col)
+        cbar.set_label(f"{color_col}  (bright = better)")
     fig.suptitle("Pareto: accuracy / robustness vs cost", fontsize=11)
     fig.savefig(out_base.with_suffix(".png"), dpi=300, bbox_inches="tight")
     plt.close(fig)
@@ -274,9 +275,13 @@ def interactive_html(df: pd.DataFrame, metrics, out_html: Path, title: str) -> N
                 x=df[time_col], y=df[ycol], mode="markers+text",
                 text=models, textposition="top center", textfont={"size": 8},
                 marker=dict(
+                    # reversescale -> lower MAE (better) is brighter
                     size=12, color=df[color_col], colorscale="Viridis",
+                    reversescale=True,
                     showscale=(idx == 0), line=dict(width=0.7, color="black"),
-                    colorbar=dict(title=color_col, len=0.4, y=0.25) if idx == 0 else None,
+                    colorbar=dict(
+                        title=f"{color_col} (bright=better)", len=0.4, y=0.25
+                    ) if idx == 0 else None,
                 ),
                 hovertext=models, name=ylabel,
             ),
