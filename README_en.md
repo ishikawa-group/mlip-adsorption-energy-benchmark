@@ -110,9 +110,15 @@ and renders [catbench.org](https://catbench.org)-style figures into
   printed in each cell, with a colorbar.
 - **Pareto scatter**: Time/step vs Total MAE, Time/step vs Normal MAE
   (Accuracy-Efficiency), and Time/step vs Normal rate % (Robustness-Efficiency),
-  points colored by MAE.
-- Outputs: static `*_heatmap.png` / `*_scatter.png` and an interactive
-  `*_dashboard.html` (plotly).
+  points colored by MAE (bright = better).
+- **Per-calculator parity plots** (`viz/per_calculator/`): predicted vs DFT for
+  each calculator, in **Total** and **Normal (anomalies & migration excluded)**
+  panels, points **colored by adsorbate**. The Normal/anomaly split reuses
+  CatBench's own classifier (`_anomaly_detection`) so it matches the official
+  numbers. Also writes `<label>_parity.csv` and CatBench's per-adsorbate
+  `<label>_adsorbate_breakdown.csv`. Disable with `--no-per-calculator`.
+- Outputs: static `*_heatmap.png` / `*_scatter.png` / (per-calc) `<label>_parity.png`
+  and interactive `*_dashboard.html` / (per-calc) `<label>_parity.html` (plotly).
 
 > Run `analyze.py` first so the summary CSV exists.
 

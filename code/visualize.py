@@ -23,6 +23,8 @@ Example
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
 
@@ -300,6 +302,204 @@ def interactive_html(df: pd.DataFrame, metrics, out_html: Path, title: str) -> N
 
 
 # ---------------------------------------------------------------------------
+# Per-calculator parity plots (MLIP vs DFT), Total + Normal, colored by adsorbate
+# ---------------------------------------------------------------------------
+def _parse_adsorbate(reaction_key: str) -> str:
+    """Extract the adsorbate label from a CatBench reaction key.
+
+    e.g. 'Ag8O16_H2O(g) - H2(g) + * -> O*'      -> 'O'
+         'W12_H2O(g) - H2(g) + * -> SH*_3'        -> 'SH'
+         '... -> 2.0OH*'                           -> 'OH'
+    """
+
+    product = reaction_key.split("->")[-1].strip()
+    product = product.split("_")[0]              # drop trailing _<index>
+    product = re.sub(r"^[0-9.]+", "", product)   # drop leading coefficient
+    return product.replace("*", "").strip() or "?"
+
+
+def _classify_reactions(mlip_result: dict, label: str) -> dict[str, str]:
+    """Per-reaction Normal/anomaly classification, reusing CatBench's classifier.
+
+    We call CatBench's own ``_anomaly_detection`` (the single source of truth for
+    its leaderboard numbers) so our Normal/Total split matches CatBench exactly.
+    Falls back to treating everything as 'normal' if the internal API changes.
+    """
+
+    try:
+        from catbench.adsorption import AdsorptionAnalysis
+
+        analyzer = AdsorptionAnalysis(mlip_list=[label], plot_enabled=False)
+        n_crit = int(mlip_result.get("calculation_settings", {}).get("n_crit_relax", 999))
+        _, anomaly_summary = analyzer._anomaly_detection(mlip_result, label, n_crit)
+        return {r: v.get("classification", "normal") for r, v in anomaly_summary.items()}
+    except Exception as exc:  # noqa: BLE001
+        print(f"  (warning: classification failed for {label}: {exc}; treating all as normal)")
+        return {}
+
+
+def parity_dataframe(result_json: Path) -> pd.DataFrame:
+    """Build a tidy parity table (DFT vs MLIP per reaction) from a result.json."""
+
+    data = json.loads(result_json.read_text())
+    classes = _classify_reactions(data, result_json.parent.name)
+    rows = []
+    for reaction, v in data.items():
+        if reaction == "calculation_settings" or not isinstance(v, dict):
+            continue
+        try:
+            dft = float(v["reference"]["ads_eng"])
+            mlip = float(v["final"]["ads_eng_median"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        rows.append({
+            "reaction": reaction,
+            "adsorbate": _parse_adsorbate(reaction),
+            "DFT": dft,
+            "MLIP": mlip,
+            "classification": classes.get(reaction, "normal"),
+        })
+    return pd.DataFrame(rows)
+
+
+def _adsorbate_color_map(adsorbates: list[str]) -> dict[str, tuple]:
+    base = plt.get_cmap("tab10" if len(adsorbates) <= 10 else "tab20")
+    return {a: base(i % base.N) for i, a in enumerate(adsorbates)}
+
+
+def _parity_panel(ax, sub: pd.DataFrame, adsorbates, color_map, title, ylabel):
+    if len(sub):
+        lo = float(min(sub["DFT"].min(), sub["MLIP"].min()))
+        hi = float(max(sub["DFT"].max(), sub["MLIP"].max()))
+        pad = 0.05 * (hi - lo + 1e-9)
+        ax.plot([lo - pad, hi + pad], [lo - pad, hi + pad], "k--", lw=1, zorder=1)
+        for a in adsorbates:
+            s = sub[sub["adsorbate"] == a]
+            if len(s):
+                ax.scatter(s["DFT"], s["MLIP"], s=35, color=[color_map[a]],
+                           label=f"{a} (n={len(s)})", edgecolor="black",
+                           linewidth=0.3, alpha=0.85, zorder=3)
+        mae = (sub["MLIP"] - sub["DFT"]).abs().mean()
+        ax.text(0.04, 0.96, f"MAE = {mae:.3f} eV\nN = {len(sub)}",
+                transform=ax.transAxes, va="top", ha="left", fontsize=8,
+                bbox=dict(boxstyle="round", fc="white", alpha=0.7))
+        ax.legend(fontsize=7, loc="lower right")
+    else:
+        ax.text(0.5, 0.5, "(no reactions)", transform=ax.transAxes, ha="center")
+    ax.set_xlabel("DFT adsorption energy (eV)")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize=10)
+    ax.grid(True, alpha=0.3)
+
+
+def parity_matplotlib(df: pd.DataFrame, label: str, out_png: Path) -> None:
+    adsorbates = sorted(df["adsorbate"].unique())
+    color_map = _adsorbate_color_map(adsorbates)
+    normal = df[df["classification"] == "normal"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 6.2))
+    _parity_panel(axes[0], df, adsorbates, color_map,
+                  "Total (all reactions)", f"{label} adsorption energy (eV)")
+    _parity_panel(axes[1], normal, adsorbates, color_map,
+                  "Normal (anomalies & migration excluded)",
+                  f"{label} adsorption energy (eV)")
+    fig.suptitle(f"{label} — parity (MLIP vs DFT), colored by adsorbate", fontsize=11)
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def parity_plotly(df: pd.DataFrame, label: str, out_html: Path) -> None:
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    adsorbates = sorted(df["adsorbate"].unique())
+    palette = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
+               "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]
+    color_of = {a: palette[i % len(palette)] for i, a in enumerate(adsorbates)}
+    panels = [("Total (all reactions)", df),
+              ("Normal (anomalies & migration excluded)",
+               df[df["classification"] == "normal"])]
+
+    fig = make_subplots(rows=1, cols=2, subplot_titles=[p[0] for p in panels],
+                        horizontal_spacing=0.08)
+    for col, (_title, sub) in enumerate(panels, start=1):
+        if len(sub):
+            lo = float(min(sub["DFT"].min(), sub["MLIP"].min()))
+            hi = float(max(sub["DFT"].max(), sub["MLIP"].max()))
+            fig.add_trace(go.Scatter(x=[lo, hi], y=[lo, hi], mode="lines",
+                                     line=dict(color="black", dash="dash"),
+                                     showlegend=False, hoverinfo="skip"),
+                          row=1, col=col)
+            for a in adsorbates:
+                s = sub[sub["adsorbate"] == a]
+                if not len(s):
+                    continue
+                fig.add_trace(go.Scatter(
+                    x=s["DFT"], y=s["MLIP"], mode="markers", name=a,
+                    legendgroup=a, showlegend=(col == 1),
+                    marker=dict(color=color_of[a], size=7,
+                                line=dict(width=0.4, color="black")),
+                    text=s["reaction"],
+                    hovertemplate="%{text}<br>DFT=%{x:.3f}<br>MLIP=%{y:.3f}<extra>" + a + "</extra>",
+                ), row=1, col=col)
+            mae = (sub["MLIP"] - sub["DFT"]).abs().mean()
+            suffix = "" if col == 1 else str(col)
+            fig.add_annotation(text=f"MAE={mae:.3f} eV  N={len(sub)}",
+                               xref=f"x{suffix} domain", yref=f"y{suffix} domain",
+                               x=0.04, y=0.96, showarrow=False, align="left")
+        fig.update_xaxes(title_text="DFT adsorption energy (eV)", row=1, col=col)
+        fig.update_yaxes(title_text=f"{label} (eV)",
+                         scaleanchor=f"x{'' if col == 1 else col}",
+                         scaleratio=1, row=1, col=col)
+
+    fig.update_layout(title=f"{label} — parity (MLIP vs DFT), by adsorbate",
+                      template="plotly_white", height=620, width=1200)
+    fig.write_html(str(out_html), include_plotlyjs="cdn")
+
+
+def export_adsorbate_breakdown(bench_dir: Path, benchmark: str, label: str,
+                               out_csv: Path) -> None:
+    """Save CatBench's per-adsorbate breakdown sheet for one MLIP to CSV."""
+
+    xlsx = bench_dir / f"{benchmark}_Benchmarking_Analysis.xlsx"
+    if not xlsx.exists():
+        return
+    try:
+        raw = pd.read_excel(xlsx, sheet_name=label)
+    except Exception:  # noqa: BLE001
+        return
+    if "Adsorbate_name" in raw.columns:
+        raw = raw[raw["Adsorbate_name"].notna()]
+    raw.to_csv(out_csv, index=False)
+
+
+def render_per_calculator(df_summary: pd.DataFrame, bench_dir: Path, benchmark: str,
+                          outdir: Path, static: bool, html: bool) -> int:
+    """Build per-calculator parity outputs for every model in the summary."""
+
+    pc_dir = outdir / "per_calculator"
+    pc_dir.mkdir(parents=True, exist_ok=True)
+    made = 0
+    for label in df_summary["MLIP_name"].astype(str):
+        result_json = bench_dir / label / f"{label}_result.json"
+        if not result_json.exists():
+            continue
+        pdf = parity_dataframe(result_json)
+        if pdf.empty:
+            continue
+        pdf.to_csv(pc_dir / f"{label}_parity.csv", index=False)
+        export_adsorbate_breakdown(bench_dir, benchmark, label,
+                                   pc_dir / f"{label}_adsorbate_breakdown.csv")
+        if static:
+            parity_matplotlib(pdf, label, pc_dir / f"{label}_parity.png")
+        if html:
+            parity_plotly(pdf, label, pc_dir / f"{label}_parity.html")
+        made += 1
+    return made
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def parse_args() -> argparse.Namespace:
@@ -320,8 +520,13 @@ def parse_args() -> argparse.Namespace:
         "--outdir", default=None,
         help="Output directory (default: result/<benchmark>/viz).",
     )
-    parser.add_argument("--no-static", action="store_true", help="Skip PNG/PDF output.")
+    parser.add_argument("--no-static", action="store_true", help="Skip PNG output.")
     parser.add_argument("--no-html", action="store_true", help="Skip interactive HTML.")
+    parser.add_argument(
+        "--no-per-calculator",
+        action="store_true",
+        help="Skip the per-calculator parity (MLIP vs DFT) plots.",
+    )
     return parser.parse_args()
 
 
@@ -362,6 +567,14 @@ def main() -> int:
             title=f"{args.benchmark} — MLIP adsorption-energy benchmark",
         )
         print("  html   : dashboard.html")
+
+    if not args.no_per_calculator:
+        made = render_per_calculator(
+            df, bench_dir, args.benchmark, outdir,
+            static=not args.no_static, html=not args.no_html,
+        )
+        print(f"  per-calc: {made} calculator(s) -> parity .png/.html/.csv "
+              f"+ adsorbate_breakdown.csv under {outdir / 'per_calculator'}")
 
     return 0
 

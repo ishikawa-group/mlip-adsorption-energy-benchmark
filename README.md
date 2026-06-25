@@ -110,9 +110,14 @@ python code/visualize.py --benchmark MamunHighT2019
   セルに実数値を表示、colorbar 付き。
 - **Pareto 散布図**: Time/step vs Total MAE、Time/step vs Normal MAE
   （Accuracy-Efficiency）、Time/step vs Normal rate%（Robustness-Efficiency）。
-  点は MAE で viridis 着色。
-- 出力: 静的 `*_heatmap.png` / `*_scatter.png` と
-  インタラクティブ `*_dashboard.html`（plotly）。
+  点は MAE で viridis 着色（明るい=良い）。
+- **計算機ごとの詳細 parity 図**（`viz/per_calculator/`）: 各 calculator の予測 vs DFT を
+  **Total** と **Normal（anomaly/migration 除外）**の2パネルで出力。点は**吸着種で色分け**。
+  Normal/anomaly の分類は CatBench 本体の分類器（`_anomaly_detection`）を再利用するため
+  公式数値と一致。あわせて `<label>_parity.csv` と CatBench の吸着種別ブレークダウン
+  `<label>_adsorbate_breakdown.csv` も出力。`--no-per-calculator` で無効化可。
+- 出力: 静的 `*_heatmap.png` / `*_scatter.png` /（per-calc）`<label>_parity.png` と
+  インタラクティブ `*_dashboard.html` /（per-calc）`<label>_parity.html`（plotly）。
 
 > `analyze.py` を先に実行してサマリ CSV を作成してください。
 
