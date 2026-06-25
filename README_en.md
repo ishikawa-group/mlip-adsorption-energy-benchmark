@@ -108,6 +108,9 @@ and renders [catbench.org](https://catbench.org)-style figures into
   Normal% / anomaly breakdown / ADwT / AMDwT / Time/step ...). Each column is
   colored independently with **viridis** (bright = better), the raw value is
   printed in each cell, with a colorbar.
+- **Single-metric bar charts**: MAE_total / MAE_normal / Time/step as horizontal
+  bars **sorted best-first** (three metrics stacked in one figure, viridis
+  colorbar = brighter is better).
 - **Pareto scatter**: Time/step vs Total MAE, Time/step vs Normal MAE
   (Accuracy-Efficiency), and Time/step vs Normal rate % (Robustness-Efficiency),
   points colored by MAE (bright = better).

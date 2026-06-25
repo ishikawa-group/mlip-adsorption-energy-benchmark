@@ -126,8 +126,9 @@ def heatmap_matplotlib(df: pd.DataFrame, metrics, out_base: Path) -> None:
         raw[:, j] = df[col].to_numpy(dtype=float)
         norm[:, j] = _normalize_good(raw[:, j], hib)
 
-    fig_w = max(8.0, 1.05 * n_cols + 3.0)
-    fig_h = max(3.0, 0.5 * n_rows + 2.0)
+    # Bigger cells so labels/annotations have room to be larger and legible.
+    fig_w = max(11.0, 1.5 * n_cols + 4.0)
+    fig_h = max(4.0, 0.62 * n_rows + 2.5)
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
     cmap = plt.get_cmap("viridis").copy()
@@ -135,14 +136,15 @@ def heatmap_matplotlib(df: pd.DataFrame, metrics, out_base: Path) -> None:
     im = ax.imshow(np.ma.masked_invalid(norm), cmap=cmap, aspect="auto", vmin=0, vmax=1)
 
     ax.set_xticks(range(n_cols))
-    ax.set_xticklabels([m[1] for m in metrics], rotation=45, ha="right", fontsize=8)
+    ax.set_xticklabels([m[1] for m in metrics], rotation=40, ha="right", fontsize=12)
     ax.set_yticks(range(n_rows))
-    ax.set_yticklabels(models, fontsize=8)
-    ax.set_title("Benchmark metrics (viridis: bright = better, per column)", fontsize=10)
+    ax.set_yticklabels(models, fontsize=11)
+    ax.set_title("Benchmark metrics (viridis: bright = better, per column)", fontsize=14)
 
     sm = cm.ScalarMappable(norm=Normalize(0, 1), cmap=cmap)
     cbar = fig.colorbar(sm, ax=ax, fraction=0.025, pad=0.02)
-    cbar.set_label("per-column score (1 = best)", fontsize=8)
+    cbar.set_label("per-column score (1 = best)", fontsize=11)
+    cbar.ax.tick_params(labelsize=10)
 
     for i in range(n_rows):
         for j in range(n_cols):
@@ -152,10 +154,66 @@ def heatmap_matplotlib(df: pd.DataFrame, metrics, out_base: Path) -> None:
             txt = f"{val:.3f}" if abs(val) < 100 else f"{val:.1f}"
             shade = norm[i, j]
             color = "white" if (np.isfinite(shade) and shade < 0.55) else "black"
-            ax.text(j, i, txt, ha="center", va="center", fontsize=7, color=color)
+            ax.text(j, i, txt, ha="center", va="center", fontsize=9, color=color)
 
     fig.tight_layout()
     fig.savefig(out_base.with_suffix(".png"), dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+# Single-metric bar charts (sorted best-first, viridis colorbar). All three of
+# these metrics are "lower is better", so bars are sorted ascending and colored
+# with reversed viridis (bright = lower = better).
+BAR_METRICS: list[tuple[str, str]] = [
+    ("MAE_total (eV)", "MAE total (eV)"),
+    ("MAE_normal (eV)", "MAE normal (eV)"),
+    ("Time_per_step (s)", "Time per step (s)"),
+]
+
+
+def bars_matplotlib(df: pd.DataFrame, out_png: Path) -> None:
+    """One horizontal bar chart per metric, sorted best-first, with a colorbar."""
+
+    metrics = [(c, l) for c, l in BAR_METRICS if c in df.columns and df[c].notna().any()]
+    if not metrics:
+        return
+    n = len(df)
+    fig, axes = plt.subplots(
+        len(metrics), 1, figsize=(11.0, max(5.0, 0.42 * n + 1.4) * len(metrics))
+    )
+    if len(metrics) == 1:
+        axes = [axes]
+
+    cmap = plt.get_cmap("viridis_r")  # bright = low value = better
+    for ax, (col, label) in zip(axes, metrics):
+        sub = df[["MLIP_name", col]].dropna(subset=[col]).copy()
+        sub = sub.sort_values(col, ascending=True)            # best (lowest) first
+        names = sub["MLIP_name"].astype(str).tolist()
+        vals = sub[col].to_numpy(dtype=float)
+        y = np.arange(len(vals))[::-1]                        # best on top
+
+        vmin, vmax = float(vals.min()), float(vals.max())
+        norm = Normalize(vmin, vmax)
+        colors = cmap(norm(vals))
+        ax.barh(y, vals, color=colors, edgecolor="black", linewidth=0.3)
+
+        ax.set_yticks(y)
+        ax.set_yticklabels(names, fontsize=10)
+        ax.set_xlabel(label, fontsize=12)
+        ax.set_title(f"{label} — sorted best→worst", fontsize=13)
+        ax.tick_params(axis="x", labelsize=10)
+        ax.margins(x=0.12)
+        span = (vmax - vmin) or 1.0
+        for yi, v in zip(y, vals):
+            ax.text(v + 0.01 * span, yi, f"{v:.3f}", va="center", ha="left", fontsize=8)
+
+        sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+        cbar = fig.colorbar(sm, ax=ax, fraction=0.03, pad=0.02)
+        cbar.set_label(f"{label} (bright = better)", fontsize=10)
+        cbar.ax.tick_params(labelsize=9)
+
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -381,14 +439,15 @@ def _parity_panel(ax, sub: pd.DataFrame, adsorbates, color_map, title, ylabel):
                            linewidth=0.3, alpha=0.85, zorder=3)
         mae = (sub["MLIP"] - sub["DFT"]).abs().mean()
         ax.text(0.04, 0.96, f"MAE = {mae:.3f} eV\nN = {len(sub)}",
-                transform=ax.transAxes, va="top", ha="left", fontsize=8,
+                transform=ax.transAxes, va="top", ha="left", fontsize=11,
                 bbox=dict(boxstyle="round", fc="white", alpha=0.7))
-        ax.legend(fontsize=7, loc="lower right")
+        ax.legend(fontsize=10, loc="lower right")
     else:
         ax.text(0.5, 0.5, "(no reactions)", transform=ax.transAxes, ha="center")
-    ax.set_xlabel("DFT adsorption energy (eV)")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title, fontsize=10)
+    ax.set_xlabel("DFT adsorption energy (eV)", fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_title(title, fontsize=13)
+    ax.tick_params(labelsize=10)
     ax.grid(True, alpha=0.3)
 
 
@@ -558,8 +617,9 @@ def main() -> int:
 
     if not args.no_static:
         heatmap_matplotlib(df, metrics, outdir / f"{args.benchmark}_heatmap")
+        bars_matplotlib(df, outdir / f"{args.benchmark}_bars.png")
         scatter_matplotlib(df, outdir / f"{args.benchmark}_scatter")
-        print("  static : heatmap.png, scatter.png")
+        print("  static : heatmap.png, bars.png, scatter.png")
 
     if not args.no_html:
         interactive_html(

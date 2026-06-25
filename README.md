@@ -108,6 +108,8 @@ python code/visualize.py --benchmark MamunHighT2019
 - **指標ヒートマップ表**: 1 行 = 1 モデル、列 = 各指標（MAE / Normal% / anomaly 内訳 /
   ADwT / AMDwT / Time/step 等）。各列を **viridis** で独立に色付け（明るい = 良い）し、
   セルに実数値を表示、colorbar 付き。
+- **単一指標の棒グラフ**: MAE_total / MAE_normal / Time/step を**良い順**に並べた横棒グラフ
+  （3 指標を1枚に縦並び、viridis カラーバー付き＝明るいほど良い）。
 - **Pareto 散布図**: Time/step vs Total MAE、Time/step vs Normal MAE
   （Accuracy-Efficiency）、Time/step vs Normal rate%（Robustness-Efficiency）。
   点は MAE で viridis 着色（明るい=良い）。
