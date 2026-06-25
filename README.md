@@ -147,9 +147,14 @@ python script/tsubame4/submit_tsubame_jobs.py \
 主な引数: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal`（preset 上書き）,
 `--group`, `--save-files`, `--cueq`, `--dry-run`。
 
+`--dispersion` は Grimme-D3(BJ) 分散力補正を有効化します。汎函数(xc)は
+ase-calculator-kit (>= v0.2.2) の方針表に従い model/modal/task ごとに自動選択され
+（例: OC20=RPBE, それ以外の多くは PBE, r2SCAN系=r2scan）、訓練時に分散を含むモデル
+（UMA `oc25` 等）は二重計上を避けるため拒否されます。結果は **`<label>-d3`** の別ディレクトリに保存。
+
 `--cueq` は SevenNet の CuEquivariance を有効化します（cuequivariance 導入環境が必要）。
 結果は **`<label>-cueq`**（例 `sevennet-mpa-cueq`）の別ディレクトリ・別ジョブに保存され、
-非 cueq の結果を上書きしません。例:
+非 cueq の結果を上書きしません（`--cueq --dispersion` 併用時は `<label>-cueq-d3`）。例:
 
 ```bash
 python script/tsubame4/submit_tsubame_jobs.py \

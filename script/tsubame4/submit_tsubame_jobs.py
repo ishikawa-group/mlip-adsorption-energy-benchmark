@@ -131,6 +131,7 @@ def main() -> int:
     print(f"Calculators : {', '.join(j.label for j in jobs)}")
     print(f"Device      : {args.device}")
     print(f"CuEquivar.  : {bool(args.cueq)} (label suffix '-cueq')")
+    print(f"Dispersion  : {bool(args.dispersion)} (D3, label suffix '-d3')")
     print(f"Save files  : {bool(args.save_files)} (per-structure log/traj)")
     print(f"Group       : {args.group}")
     print(f"Result dir  : {result_dir}")
@@ -147,9 +148,9 @@ def main() -> int:
             # passed through CALCULATOR so the run script reproduces this exact
             # variant; the label keys the job name and result folder.
             spec = spec_to_string(job)
-            # CuEquivariance runs use a separate '<label>-cueq' identity so they
-            # never clash with the non-cueq results/jobs.
-            label = job.label + ("-cueq" if args.cueq else "")
+            # Distinct identity per variant: '-cueq' (CuEquivariance) and/or
+            # '-d3' (dispersion) suffixes so these never clash with plain runs.
+            label = job.label + ("-cueq" if args.cueq else "") + ("-d3" if args.dispersion else "")
 
             # Resume safety: a finished run has been relocated to
             # result/<benchmark>/<label>/<label>_result.json. Skip it so a

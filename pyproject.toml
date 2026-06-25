@@ -21,7 +21,7 @@ dependencies = [
   "openpyxl",          # read CatBench's xlsx report to export a summary CSV
   "plotly",            # interactive HTML visualizations
   "catbench @ git+https://github.com/JinukMoon/catbench.git",
-  "ase-calculator-kit @ git+https://github.com/ishikawa-group/ase-calculator-kit.git",
+  "ase-calculator-kit @ git+https://github.com/ishikawa-group/ase-calculator-kit.git@v0.2.2",
 ]
 
 [project.optional-dependencies]

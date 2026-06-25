@@ -116,8 +116,9 @@ def main() -> int:
         model = job.overrides.get("model", args.model)
         task = job.overrides.get("task", args.task)
         modal = job.overrides.get("modal", args.modal)
-        # CuEquivariance runs go to a separate '<label>-cueq' folder.
-        label = job.label + ("-cueq" if args.cueq else "")
+        # Distinct output folder per variant: '-cueq' and/or '-d3' suffixes so
+        # CuEquivariance and dispersion-corrected runs never clash with plain runs.
+        label = job.label + ("-cueq" if args.cueq else "") + ("-d3" if args.dispersion else "")
         print(f"---- Running: {args.benchmark} / {label} ----", flush=True)
         try:
             out = run_adsorption_benchmark(
