@@ -61,7 +61,12 @@ def parse_args() -> argparse.Namespace:
         choices=["auto", "cpu", "cuda", "mps"],
         help="Compute device passed to the MLIP backend.",
     )
-    parser.add_argument("--n-seeds", type=int, default=3, help="Reproducibility seeds.")
+    parser.add_argument(
+        "--n-seeds",
+        type=int,
+        default=1,
+        help="Reproducibility seeds (1 = ~3x faster; use >1 to measure run-to-run spread).",
+    )
     parser.add_argument("--model", default=None, help="Override preset model name.")
     parser.add_argument("--task", default=None, help="Override UMA/fairchem task.")
     parser.add_argument("--modal", default=None, help="Override SevenNet modal.")

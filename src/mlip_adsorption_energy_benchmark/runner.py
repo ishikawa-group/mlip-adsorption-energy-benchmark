@@ -105,7 +105,7 @@ def run_adsorption_benchmark(
     *,
     label: str | None = None,
     device: str = "auto",
-    n_seeds: int = 3,
+    n_seeds: int = 1,
     result_dir: str | os.PathLike,
     data_dir: str | os.PathLike,
     model: str | None = None,

@@ -74,7 +74,7 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--device", default="cuda", choices=["auto", "cpu", "cuda", "mps"])
-    parser.add_argument("--n-seeds", type=int, default=3)
+    parser.add_argument("--n-seeds", type=int, default=1)
     parser.add_argument("--mode", default="basic")
     parser.add_argument("--model", default=None, help="Override preset model name.")
     parser.add_argument("--task", default=None, help="Override UMA/fairchem task.")

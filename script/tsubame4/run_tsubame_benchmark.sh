@@ -21,7 +21,7 @@ if [ -z "${CALCULATOR:-}" ]; then
 fi
 
 DEVICE="${DEVICE:-cuda}"
-N_SEEDS="${N_SEEDS:-3}"
+N_SEEDS="${N_SEEDS:-1}"
 MODE="${MODE:-basic}"
 F_CRIT_RELAX="${F_CRIT_RELAX:-0.05}"
 N_CRIT_RELAX="${N_CRIT_RELAX:-999}"
