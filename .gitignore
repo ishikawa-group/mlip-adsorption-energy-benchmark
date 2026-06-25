@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.dylib
+
+# Virtual environments (must NOT be tracked)
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# Benchmark outputs and downloaded datasets
+/result/*
+!/result/.gitkeep
+/data/*
+!/data/.gitkeep
+
+# CatBench / ASE output artefacts
+*.traj
+*.log
+*.xlsx
+*.png
+raw_data/
