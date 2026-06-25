@@ -130,6 +130,27 @@ python script/tsubame4/submit_tsubame_jobs.py \
 > （`run_benchmark.py` に `--no-save-files` を渡す）。結果は `*_result.json` 等の小さな
 > JSON のみで、MAE/parity 解析には十分です。trajectory が必要な場合のみ `--save-files` を付与。
 
+### 再開（resume）— 大規模データが walltime で切れた場合
+
+MamunHighT2019（~45k 吸着）のような大規模データは 1 ジョブの 24h walltime 内に
+終わらないことがあります。CatBench は `*_structure_cache.json` から **自動で続きを再開**
+（計算済み構造は `Skipping already calculated` でスキップ）するため、**同じコマンドで
+再投入するだけで続きから完了**できます。計算は無駄になりません。
+
+```bash
+# 24h 後など、未完了ジョブだけを再投入（同じ --calculator / 設定で）
+python script/tsubame4/submit_tsubame_jobs.py \
+    --benchmark MamunHighT2019,ComerGeneralized2024 --device cuda \
+    --calculator "<初回と同じ spec>"
+```
+
+- 既定で **完了済み**（`result/<benchmark>/<label>/<label>_result.json` がある）calculator は
+  自動スキップし、**未完了/時間切れのものだけ resume** します。
+- **重要**: 途中経過 `result/<benchmark>/result/<label>/`（cache 含む）を消さないこと。
+- 完了済みも含めて最初から再計算したい場合のみ `--rerun-completed` を付けます。
+- 再開が確実に効く条件は「relaxation 設定（`--f-crit-relax` / `--n-crit-relax` / `--mode` 等）を
+  初回と同一にすること」。変更するとキャッシュは破棄され再計算されます。
+
 ## 英語版
 
 [README_en.md](README_en.md) を参照してください。

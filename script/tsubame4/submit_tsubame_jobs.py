@@ -89,6 +89,15 @@ def parse_args() -> argparse.Namespace:
             "exhaust the group-shared inode quota on Lustre."
         ),
     )
+    parser.add_argument(
+        "--rerun-completed",
+        action="store_true",
+        help=(
+            "Also (re)submit calculators whose final <label>_result.json already "
+            "exists. Default: skip them, so a re-submission only resumes the jobs "
+            "that timed out (CatBench auto-resumes from structure_cache.json)."
+        ),
+    )
     parser.add_argument("--group", default=TSUBAME_GROUP, help="TSUBAME4 group (-g).")
     parser.add_argument("--result-dir", default=str(DEFAULT_RESULT_DIR))
     parser.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR))
@@ -117,15 +126,28 @@ def main() -> int:
     print(f"Result dir  : {result_dir}")
     print(f"Data dir    : {data_dir}")
     print(f"Total jobs  : {len(benchmarks) * len(jobs)}")
+    print(f"Skip done   : {not args.rerun_completed}")
     print()
 
     submitted = 0
+    skipped = 0
     for benchmark in benchmarks:
         for job in jobs:
             # One job per (benchmark, calculator variant). The spec string is
             # passed through CALCULATOR so the run script reproduces this exact
             # variant; the label keys the job name and result folder.
             spec = spec_to_string(job)
+
+            # Resume safety: a finished run has been relocated to
+            # result/<benchmark>/<label>/<label>_result.json. Skip it so a
+            # re-submission only resumes/finishes the jobs that timed out
+            # (CatBench auto-resumes those from their structure_cache.json).
+            final_result = result_dir / benchmark / job.label / f"{job.label}_result.json"
+            if final_result.exists() and not args.rerun_completed:
+                print(f"Skipping (already completed): {benchmark} / {job.label}")
+                skipped += 1
+                continue
+
             job_name = f"mlipads_{benchmark}_{job.label}"[:120]
             log_dir = result_dir / benchmark / "log" / "tsubame_jobs" / job.label
             stdout_log = log_dir / f"{job_name}_stdout.log"
@@ -188,7 +210,7 @@ def main() -> int:
             else:
                 print(f"  -> submit failed: {res.stderr.strip()}", file=sys.stderr)
 
-    print(f"\nSubmitted jobs: {submitted}")
+    print(f"\nSubmitted jobs: {submitted}  (skipped completed: {skipped})")
     if args.dry_run:
         print("(dry-run mode; no jobs actually submitted)")
     return 0

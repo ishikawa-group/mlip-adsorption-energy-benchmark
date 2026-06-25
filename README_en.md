@@ -131,3 +131,25 @@ overrides), `--group`, `--save-files`, `--dry-run`.
 > **omits per-structure files by default** (passes `--no-save-files`). Only the
 > small `*_result.json` files are written, which is enough for MAE/parity
 > analysis. Pass `--save-files` only when you need trajectories.
+
+### Resuming jobs that hit the walltime
+
+Large datasets (e.g. MamunHighT2019, ~45k adsorptions) may not finish within a
+single 24h job. CatBench **auto-resumes** from `*_structure_cache.json` (already
+done structures are `Skipping already calculated`), so **just re-submitting the
+same command continues from where it stopped** — no work is wasted.
+
+```bash
+# e.g. after 24h, re-submit; only unfinished jobs resume
+python script/tsubame4/submit_tsubame_jobs.py \
+    --benchmark MamunHighT2019,ComerGeneralized2024 --device cuda \
+    --calculator "<same spec as the first run>"
+```
+
+- Calculators already **completed** (a `result/<benchmark>/<label>/<label>_result.json`
+  exists) are skipped by default; only timed-out ones resume.
+- **Important**: do not delete the in-progress `result/<benchmark>/result/<label>/`
+  (it holds the cache).
+- Use `--rerun-completed` to recompute everything from scratch.
+- Resume only works if the relaxation settings (`--f-crit-relax` / `--n-crit-relax`
+  / `--mode`) match the first run; changing them invalidates the cache.
