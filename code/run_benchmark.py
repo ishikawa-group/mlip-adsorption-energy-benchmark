@@ -28,7 +28,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from mlip_adsorption_energy_benchmark import (  # noqa: E402
     KNOWN_BENCHMARKS,
-    resolve_calculator_names,
+    resolve_calculator_specs,
     run_adsorption_benchmark,
 )
 
@@ -49,7 +49,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--calculator",
         default="all",
-        help="'all' or a comma-separated list of calculator presets.",
+        help=(
+            "'all' or a comma-separated list of calculator specs "
+            "'<preset>[:key=value;...]' where key is model/task/modal "
+            "(e.g. 'uma:task=oc22,sevennet:modal=omat24')."
+        ),
     )
     parser.add_argument(
         "--device",
@@ -85,11 +89,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    calculators = resolve_calculator_names(args.calculator)
+    jobs = resolve_calculator_specs(args.calculator)
 
     print("==== MLIP adsorption-energy benchmark ====")
     print(f"Benchmark   : {args.benchmark}")
-    print(f"Calculators : {', '.join(calculators)}")
+    print(f"Calculators : {', '.join(j.label for j in jobs)}")
     print(f"Device      : {args.device}")
     print(f"Seeds       : {args.n_seeds}")
     print(f"Mode        : {args.mode}")
@@ -98,19 +102,24 @@ def main() -> int:
     print()
 
     failures = 0
-    for calculator in calculators:
-        print(f"---- Running: {args.benchmark} / {calculator} ----", flush=True)
+    for job in jobs:
+        # Spec overrides take precedence; fall back to global CLI overrides.
+        model = job.overrides.get("model", args.model)
+        task = job.overrides.get("task", args.task)
+        modal = job.overrides.get("modal", args.modal)
+        print(f"---- Running: {args.benchmark} / {job.label} ----", flush=True)
         try:
             out = run_adsorption_benchmark(
                 args.benchmark,
-                calculator,
+                job.preset,
+                label=job.label,
                 device=args.device,
                 n_seeds=args.n_seeds,
                 result_dir=args.result_dir,
                 data_dir=args.data_dir,
-                model=args.model,
-                task=args.task,
-                modal=args.modal,
+                model=model,
+                task=task,
+                modal=modal,
                 dispersion=args.dispersion,
                 f_crit_relax=args.f_crit_relax,
                 n_crit_relax=args.n_crit_relax,
@@ -120,7 +129,7 @@ def main() -> int:
             print(f"  -> done: {out}", flush=True)
         except Exception:  # keep going for the remaining calculators
             failures += 1
-            print(f"  -> FAILED for calculator {calculator!r}:", file=sys.stderr)
+            print(f"  -> FAILED for calculator {job.label!r}:", file=sys.stderr)
             traceback.print_exc()
 
     if failures:

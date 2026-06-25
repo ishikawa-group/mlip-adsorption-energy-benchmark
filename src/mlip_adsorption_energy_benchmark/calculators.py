@@ -20,6 +20,7 @@ different model/task/modal can do so without touching the code.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -153,3 +154,121 @@ def build_calculator(
         kwargs.update(extra_kwargs)
 
     return get_calculator(preset.backend, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Calculator "specs": a preset plus optional variant overrides.
+#
+# A spec lets you benchmark several *variants* of the same backend in one sweep
+# while keeping each variant in its own result folder / job. Syntax::
+#
+#     <preset>[:<key>=<value>[;<key>=<value>...]]
+#
+# where <key> is one of model / task / modal, e.g.::
+#
+#     uma:task=oc22            -> result/<benchmark>/uma-oc22/
+#     sevennet:modal=omat24    -> result/<benchmark>/sevennet-omat24/
+#     nequip:model=m           -> result/<benchmark>/nequip-m/
+#     chgnet:model=0.3.0       -> result/<benchmark>/chgnet-0.3.0/
+#
+# A bare preset name (or "all") keeps its original label, i.e. the preset name.
+# ---------------------------------------------------------------------------
+
+#: Override keys a spec may set (mapped straight onto ``build_calculator``).
+OVERRIDE_KEYS = ("model", "task", "modal")
+
+
+@dataclass(frozen=True)
+class CalculatorJob:
+    """One concrete calculator variant to benchmark.
+
+    Attributes
+    ----------
+    preset:
+        Preset name (key of :data:`CALCULATOR_PRESETS`).
+    label:
+        Unique, filesystem-safe identifier used as the result-folder and job
+        name (e.g. ``"sevennet-omat24"``). Equals ``preset`` when there are no
+        overrides.
+    overrides:
+        Subset of ``{"model", "task", "modal"}`` overriding the preset default.
+    """
+
+    preset: str
+    label: str
+    overrides: dict[str, str] = field(default_factory=dict)
+
+
+def _safe_label(text: str) -> str:
+    """Make ``text`` safe for use as a directory and SGE job name."""
+
+    return re.sub(r"[^A-Za-z0-9_.-]", "-", text)
+
+
+def parse_calculator_spec(spec: str) -> CalculatorJob:
+    """Parse a single ``<preset>[:key=value;...]`` spec into a CalculatorJob."""
+
+    raw = str(spec).strip()
+    preset, sep, rest = raw.partition(":")
+    preset = preset.strip()
+    if preset not in CALCULATOR_PRESETS:
+        allowed = ", ".join(ALL_CALCULATORS)
+        raise ValueError(f"Unknown calculator {preset!r}. Allowed: all, {allowed}")
+
+    overrides: dict[str, str] = {}
+    if sep:
+        for pair in rest.split(";"):
+            pair = pair.strip()
+            if not pair:
+                continue
+            key, eq, value = pair.partition("=")
+            key, value = key.strip().lower(), value.strip()
+            if not eq or key not in OVERRIDE_KEYS or not value:
+                raise ValueError(
+                    f"Invalid override {pair!r} in spec {raw!r}. "
+                    f"Use one of {OVERRIDE_KEYS} as key=value."
+                )
+            overrides[key] = value
+
+    # Build a readable label: preset followed by each override value in order.
+    label = preset
+    for key in OVERRIDE_KEYS:
+        if key in overrides:
+            label = f"{label}-{overrides[key]}"
+    return CalculatorJob(preset=preset, label=_safe_label(label), overrides=overrides)
+
+
+def spec_to_string(job: CalculatorJob) -> str:
+    """Inverse of :func:`parse_calculator_spec` (round-trips a CalculatorJob)."""
+
+    if not job.overrides:
+        return job.preset
+    parts = [f"{k}={job.overrides[k]}" for k in OVERRIDE_KEYS if k in job.overrides]
+    return f"{job.preset}:" + ";".join(parts)
+
+
+def resolve_calculator_specs(value: str) -> list[CalculatorJob]:
+    """Expand a ``--calculator`` argument into a list of CalculatorJob.
+
+    Accepts ``"all"`` or a comma-separated list of specs. Duplicate labels are
+    dropped so the same variant is not benchmarked twice.
+    """
+
+    raw = str(value).strip()
+    if not raw or raw.lower() == "all":
+        return [CalculatorJob(p, p, {}) for p in ALL_CALCULATORS]
+
+    jobs: list[CalculatorJob] = []
+    seen: set[str] = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        job = parse_calculator_spec(part)
+        if job.label in seen:
+            continue
+        seen.add(job.label)
+        jobs.append(job)
+    if not jobs:
+        raise ValueError("--calculator must be 'all' or a comma-separated list of specs.")
+    return jobs

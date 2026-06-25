@@ -20,8 +20,12 @@ from .benchmarks import KNOWN_BENCHMARKS, ensure_benchmark_data
 from .calculators import (
     ALL_CALCULATORS,
     CALCULATOR_PRESETS,
+    CalculatorJob,
     build_calculator,
+    parse_calculator_spec,
     resolve_calculator_names,
+    resolve_calculator_specs,
+    spec_to_string,
 )
 from .runner import run_adsorption_benchmark
 
@@ -30,8 +34,12 @@ __all__ = [
     "ensure_benchmark_data",
     "ALL_CALCULATORS",
     "CALCULATOR_PRESETS",
+    "CalculatorJob",
     "build_calculator",
+    "parse_calculator_spec",
     "resolve_calculator_names",
+    "resolve_calculator_specs",
+    "spec_to_string",
     "run_adsorption_benchmark",
     "analyze",
 ]

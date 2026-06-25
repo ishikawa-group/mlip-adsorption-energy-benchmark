@@ -28,7 +28,8 @@ PROJECT_DIR = SCRIPT_DIR.parent.parent.resolve()
 sys.path.insert(0, str(PROJECT_DIR / "src"))
 from mlip_adsorption_energy_benchmark import (  # noqa: E402
     KNOWN_BENCHMARKS,
-    resolve_calculator_names,
+    resolve_calculator_specs,
+    spec_to_string,
 )
 
 DEFAULT_RESULT_DIR = (PROJECT_DIR / "result").resolve()
@@ -65,7 +66,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--calculator",
         default="all",
-        help="'all' or comma-separated calculator presets.",
+        help=(
+            "'all' or comma-separated calculator specs "
+            "'<preset>[:key=value;...]' (key in model/task/modal). "
+            "Each spec becomes its own job and result folder, e.g. "
+            "'sevennet:modal=omat24,uma:task=oc22'."
+        ),
     )
     parser.add_argument("--device", default="cuda", choices=["auto", "cpu", "cuda", "mps"])
     parser.add_argument("--n-seeds", type=int, default=3)
@@ -88,26 +94,30 @@ def main() -> int:
         return 1
 
     benchmarks = _parse_benchmarks(args.benchmark)
-    calculators = resolve_calculator_names(args.calculator)
+    jobs = resolve_calculator_specs(args.calculator)
     result_dir = Path(args.result_dir).resolve()
     data_dir = Path(args.data_dir).resolve()
 
     print(f"Project     : {PROJECT_DIR}")
     print(f"Run script  : {RUN_SCRIPT}")
     print(f"Benchmarks  : {', '.join(benchmarks)}")
-    print(f"Calculators : {', '.join(calculators)}")
+    print(f"Calculators : {', '.join(j.label for j in jobs)}")
     print(f"Device      : {args.device}")
     print(f"Group       : {args.group}")
     print(f"Result dir  : {result_dir}")
     print(f"Data dir    : {data_dir}")
-    print(f"Total jobs  : {len(benchmarks) * len(calculators)}")
+    print(f"Total jobs  : {len(benchmarks) * len(jobs)}")
     print()
 
     submitted = 0
     for benchmark in benchmarks:
-        for calculator in calculators:
-            job_name = f"mlipads_{benchmark}_{calculator}"[:120]
-            log_dir = result_dir / benchmark / "log" / "tsubame_jobs" / calculator
+        for job in jobs:
+            # One job per (benchmark, calculator variant). The spec string is
+            # passed through CALCULATOR so the run script reproduces this exact
+            # variant; the label keys the job name and result folder.
+            spec = spec_to_string(job)
+            job_name = f"mlipads_{benchmark}_{job.label}"[:120]
+            log_dir = result_dir / benchmark / "log" / "tsubame_jobs" / job.label
             stdout_log = log_dir / f"{job_name}_stdout.log"
             stderr_log = log_dir / f"{job_name}_stderr.log"
             if not args.dry_run:
@@ -130,20 +140,21 @@ def main() -> int:
             env = os.environ.copy()
             env["PROJECT_DIR"] = str(PROJECT_DIR)
             env["BENCHMARK"] = benchmark
-            env["CALCULATOR"] = calculator
+            env["CALCULATOR"] = spec
             env["DEVICE"] = str(args.device)
             env["N_SEEDS"] = str(int(args.n_seeds))
             env["MODE"] = str(args.mode)
             env["DISPERSION"] = "true" if args.dispersion else "false"
             env["RESULT_DIR"] = str(result_dir)
             env["DATA_DIR"] = str(data_dir)
+            # Global overrides only used as a fallback when the spec sets none.
             for key, val in (("MODEL", args.model), ("TASK", args.task), ("MODAL", args.modal)):
                 if val:
                     env[key] = str(val)
                 else:
                     env.pop(key, None)
 
-            print(f"Submitting: {benchmark} / {calculator} (job={job_name})")
+            print(f"Submitting: {benchmark} / {spec} (job={job_name})")
             if args.dry_run:
                 print("  Command:", " ".join(cmd))
                 print(

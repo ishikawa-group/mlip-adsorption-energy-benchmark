@@ -47,6 +47,20 @@ are tuned for adsorption energies (overridable on the CLI).
 | `chgnet`    | chgnet    | (bundled default)                 | lightweight, general |
 | `nequip`    | nequip    | `model=L`                         | OAM (MPS unsupported) |
 
+### Sweeping variants of one calculator
+
+Each `--calculator` item may be a `preset:key=value` spec (key in model/task/modal),
+giving every variant its **own folder and job** (comma-separate multiple specs):
+
+```
+uma:task=oc22            -> result/<benchmark>/uma-oc22/
+sevennet:modal=omat24    -> result/<benchmark>/sevennet-omat24/
+nequip:model=m           -> result/<benchmark>/nequip-m/
+chgnet:model=0.3.0       -> result/<benchmark>/chgnet-0.3.0/
+```
+
+A bare preset name (or `all`) keeps its preset-name label and default settings.
+
 ## Supported benchmarks (datasets)
 
 Names are passed straight to CatBench (fetched from Zenodo). Common ones:

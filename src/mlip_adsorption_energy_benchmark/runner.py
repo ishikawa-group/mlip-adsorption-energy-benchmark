@@ -81,6 +81,7 @@ def run_adsorption_benchmark(
     benchmark: str,
     calculator: str,
     *,
+    label: str | None = None,
     device: str = "auto",
     n_seeds: int = 3,
     result_dir: str | os.PathLike,
@@ -94,14 +95,19 @@ def run_adsorption_benchmark(
     mode: str = "basic",
     save_files: bool = True,
 ) -> Path:
-    """Benchmark one calculator on one dataset; return the output directory.
+    """Benchmark one calculator variant on one dataset; return the output dir.
 
     Parameters
     ----------
     benchmark:
         CatBench dataset name (see :data:`benchmarks.KNOWN_BENCHMARKS`).
     calculator:
-        Preset name from :data:`calculators.CALCULATOR_PRESETS`.
+        Preset name from :data:`calculators.CALCULATOR_PRESETS` (selects the
+        backend); ``model`` / ``task`` / ``modal`` override its defaults.
+    label:
+        Output-folder / CatBench ``mlip_name`` for this variant. Defaults to
+        ``calculator``; pass a distinct label (e.g. ``"sevennet-omat24"``) when
+        sweeping variants so results do not overwrite each other.
     n_seeds:
         How many identical calculator instances to run (CatBench uses this to
         assess run-to-run reproducibility of the MLIP).
@@ -111,6 +117,7 @@ def run_adsorption_benchmark(
         Optional overrides of the preset defaults.
     """
 
+    label = label or calculator
     result_dir = Path(result_dir).resolve()
     data_dir = Path(data_dir).resolve()
     bench_dir = result_dir / benchmark
@@ -141,7 +148,7 @@ def run_adsorption_benchmark(
     with _working_directory(bench_dir):
         AdsorptionCalculation(
             calculators,
-            mlip_name=calculator,
+            mlip_name=label,
             benchmark=benchmark,
             mode=mode,
             f_crit_relax=f_crit_relax,
@@ -149,5 +156,5 @@ def run_adsorption_benchmark(
             save_files=save_files,
         ).run()
 
-    # 4) Flatten CatBench's layout to result/<benchmark>/<calculator>/.
-    return _relocate_calculator_output(bench_dir, calculator, mode)
+    # 4) Flatten CatBench's layout to result/<benchmark>/<label>/.
+    return _relocate_calculator_output(bench_dir, label, mode)

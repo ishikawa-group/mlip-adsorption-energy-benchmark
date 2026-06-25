@@ -47,6 +47,20 @@ mlip-adsorption-energy-benchmark/
 | `chgnet`    | chgnet    | （バンドル既定）                  | 軽量・汎用 |
 | `nequip`    | nequip    | `model=L`                         | OAM（MPS 非対応） |
 
+### variant（同じ計算機の別設定）を一度に流す
+
+`--calculator` の各要素は `preset:key=value` 形式で model/task/modal を指定でき、
+variant ごとに **別フォルダ・別ジョブ** になります（複数 variant はカンマ区切り）。
+
+```
+uma:task=oc22            -> result/<benchmark>/uma-oc22/
+sevennet:modal=omat24    -> result/<benchmark>/sevennet-omat24/
+nequip:model=m           -> result/<benchmark>/nequip-m/
+chgnet:model=0.3.0       -> result/<benchmark>/chgnet-0.3.0/
+```
+
+preset 名のみ（または `all`）の場合はラベル＝preset 名（既定設定）になります。
+
 ## 対応 benchmark（データセット）
 
 CatBench が Zenodo から取得するデータセット名をそのまま指定します。主なもの:
