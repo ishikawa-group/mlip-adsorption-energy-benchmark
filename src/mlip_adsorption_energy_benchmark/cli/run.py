@@ -5,12 +5,14 @@ Examples
 --------
 Run a single calculator on one dataset (CPU)::
 
-    python code/run_benchmark.py --benchmark BM_dataset --calculator chgnet --device cpu
+    python -m mlip_adsorption_energy_benchmark.cli.run --benchmark BM_dataset --calculator chgnet --device cpu
 
 Run every calculator on a dataset (sequential; mainly for local use --
-on a cluster prefer one job per calculator via script/tsubame4/)::
+on a cluster prefer one job per calculator via scripts/tsubame4/)::
 
-    python code/run_benchmark.py --benchmark MamunHighT2019 --calculator all --device cuda
+    python -m mlip_adsorption_energy_benchmark.cli.run --benchmark MamunHighT2019 --calculator all --device cuda
+
+(If the package is not installed, prefix with ``PYTHONPATH=src``.)
 
 Output is written to ``result/<benchmark>/<calculator>/``.
 """
@@ -18,20 +20,17 @@ Output is written to ``result/<benchmark>/<calculator>/``.
 from __future__ import annotations
 
 import argparse
-import sys
 import traceback
 from pathlib import Path
 
-# Make ``src/`` importable when run directly (no install needed).
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "src"))
-
-from mlip_adsorption_energy_benchmark import (  # noqa: E402
+from .. import (
     KNOWN_BENCHMARKS,
     resolve_calculator_specs,
     run_adsorption_benchmark,
 )
 
+# Repo root: .../src/mlip_adsorption_energy_benchmark/cli/run.py -> parents[3].
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RESULT_DIR = REPO_ROOT / "result"
 DEFAULT_DATA_DIR = REPO_ROOT / "data"
 

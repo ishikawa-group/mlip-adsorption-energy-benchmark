@@ -8,8 +8,9 @@ A thin workflow layer that benchmarks machine-learning interatomic potentials
 * `ase-calculator-kit <https://github.com/ishikawa-group/ase-calculator-kit>`_
   -- a unified factory for the MLIP ASE calculators.
 
-Typical use is through the command-line scripts in ``code/`` and the TSUBAME4
-submission helpers in ``script/tsubame4/``, but the building blocks are exposed
+Typical use is through the CLIs in the ``cli`` subpackage (run via
+``python -m mlip_adsorption_energy_benchmark.cli.run`` etc.) and the TSUBAME4
+submission helpers in ``scripts/tsubame4/``, but the building blocks are exposed
 here for programmatic use.
 """
 

@@ -68,7 +68,7 @@ export PYTHONPATH="${PROJECT_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
 export MPLBACKEND=Agg
 unset DISPLAY || true
 
-CMD=(python -u "${PROJECT_DIR}/code/run_benchmark.py"
+CMD=(python -u -m mlip_adsorption_energy_benchmark.cli.run
   --benchmark "${BENCHMARK}"
   --calculator "${CALCULATOR}"
   --device "${DEVICE}"

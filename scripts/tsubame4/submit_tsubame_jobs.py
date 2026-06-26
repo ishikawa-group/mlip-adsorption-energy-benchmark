@@ -6,7 +6,7 @@ run in parallel on separate GPUs.
 
 Example (the intended workflow)::
 
-    python script/tsubame4/submit_tsubame_jobs.py \
+    python scripts/tsubame4/submit_tsubame_jobs.py \
         --benchmark MamunHighT2019,ComerGeneralized2024 \
         --calculator all
 

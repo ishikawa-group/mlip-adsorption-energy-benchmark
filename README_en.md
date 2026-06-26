@@ -19,17 +19,18 @@ locally or submits jobs on TSUBAME4.
 
 ```
 mlip-adsorption-energy-benchmark/
-├── src/mlip_adsorption_energy_benchmark/  # benchmarking functions
+├── src/mlip_adsorption_energy_benchmark/  # package (functions + CLIs)
 │   ├── calculators.py   # calculator presets + build_calculator()
 │   ├── benchmarks.py     # dataset definitions + download cache
 │   ├── runner.py         # CatBench run wrapper (output-layout control)
-│   └── analysis.py       # analysis wrapper (parity plots / Excel)
-├── code/                 # executable CLIs
-│   ├── run_benchmark.py  # run a benchmark
-│   └── analyze.py        # analyse results
+│   ├── analysis.py       # analysis wrapper (parity plots / Excel / summary CSV)
+│   └── cli/              # executable CLIs (run via python -m ...cli.<name>)
+│       ├── run.py        # run a benchmark
+│       ├── analyze.py    # analyse results
+│       └── visualize.py  # visualize results
 ├── result/               # output: result/<benchmark>/<calculator>/ (git-ignored)
 ├── data/                 # dataset download cache (git-ignored)
-└── script/tsubame4/      # TSUBAME4 job submission
+└── scripts/tsubame4/     # TSUBAME4 job submission
     ├── run_tsubame_benchmark.sh
     └── submit_tsubame_jobs.py
 ```
@@ -84,21 +85,24 @@ CatBench and ase-calculator-kit are installed from GitHub. `.venv` is git-ignore
 
 ## Local usage
 
+CLIs are run as package submodules via `python -m` (works directly after
+`pip install -e .`; otherwise prefix with `PYTHONPATH=src`).
+
 ```bash
 # one calculator on one dataset (smoke test: small BM_dataset on CPU)
-python code/run_benchmark.py --benchmark BM_dataset --calculator chgnet --device cpu
+python -m mlip_adsorption_energy_benchmark.cli.run --benchmark BM_dataset --calculator chgnet --device cpu
 
 # all calculators, sequentially (GPU recommended)
-python code/run_benchmark.py --benchmark MamunHighT2019 --calculator all --device cuda
+python -m mlip_adsorption_energy_benchmark.cli.run --benchmark MamunHighT2019 --calculator all --device cuda
 
 # analysis (parity plots + Excel report + summary CSV)
-python code/analyze.py --benchmark MamunHighT2019
+python -m mlip_adsorption_energy_benchmark.cli.analyze --benchmark MamunHighT2019
 
 # visualization (catbench.org-style: metric heatmap-table + Pareto scatter)
-python code/visualize.py --benchmark MamunHighT2019
+python -m mlip_adsorption_energy_benchmark.cli.visualize --benchmark MamunHighT2019
 ```
 
-### Visualization (`code/visualize.py`)
+### Visualization (`cli/visualize.py`)
 
 Reads the **`result/<benchmark>/<benchmark>_summary.csv`** written by `analyze.py`
 and renders [catbench.org](https://catbench.org)-style figures into
@@ -136,12 +140,12 @@ separate GPU in parallel.
 # after cloning, create the venv on a compute node (see Installation)
 
 # submit MamunHighT2019 and ComerGeneralized2024 for all calculators
-python script/tsubame4/submit_tsubame_jobs.py \
+python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 \
     --calculator all
 
 # preview qsub commands without submitting
-python script/tsubame4/submit_tsubame_jobs.py \
+python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 --calculator all --dry-run
 ```
 
@@ -176,7 +180,7 @@ same command continues from where it stopped** — no work is wasted.
 
 ```bash
 # e.g. after 24h, re-submit; only unfinished jobs resume
-python script/tsubame4/submit_tsubame_jobs.py \
+python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 --device cuda \
     --calculator "<same spec as the first run>"
 ```

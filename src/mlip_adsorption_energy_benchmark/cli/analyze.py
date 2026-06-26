@@ -3,7 +3,9 @@
 
 Run after one or more calculators have completed::
 
-    python code/analyze.py --benchmark MamunHighT2019
+    python -m mlip_adsorption_energy_benchmark.cli.analyze --benchmark MamunHighT2019
+
+(If the package is not installed, prefix with ``PYTHONPATH=src``.)
 
 By default every calculator found under ``result/<benchmark>/`` is included.
 """
@@ -11,14 +13,12 @@ By default every calculator found under ``result/<benchmark>/`` is included.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "src"))
+from .. import KNOWN_BENCHMARKS, analyze
 
-from mlip_adsorption_energy_benchmark import KNOWN_BENCHMARKS, analyze  # noqa: E402
-
+# Repo root: .../src/mlip_adsorption_energy_benchmark/cli/analyze.py -> parents[3].
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RESULT_DIR = REPO_ROOT / "result"
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Visualize an adsorption-energy benchmark, catbench.org-style.
 
-Reads the per-model summary CSV produced by ``code/analyze.py`` and renders:
+Reads the per-model summary CSV produced by ``cli/analyze.py`` and renders:
 
 1. A **metric heatmap-table** (one row per model, one column per metric). Each
    column is colored independently with the *viridis* colormap so brighter =
@@ -10,14 +10,17 @@ Reads the per-model summary CSV produced by ``code/analyze.py`` and renders:
    - Accuracy-Efficiency : Time per step (s) vs Normal MAE (eV)
    - Robustness-Efficiency: Time per step (s) vs Normal rate (%)
 
-Both static figures (matplotlib, PNG + PDF) and an interactive HTML dashboard
+Both static figures (matplotlib, PNG) and an interactive HTML dashboard
 (plotly) are written.
 
-Run ``code/analyze.py --benchmark <name>`` first so the summary CSV exists.
+Run ``python -m mlip_adsorption_energy_benchmark.cli.analyze --benchmark <name>``
+first so the summary CSV exists.
 
 Example
 -------
-    python code/visualize.py --benchmark ComerGeneralized2024
+    python -m mlip_adsorption_energy_benchmark.cli.visualize --benchmark ComerGeneralized2024
+
+(If the package is not installed, prefix with ``PYTHONPATH=src``.)
 """
 
 from __future__ import annotations
@@ -37,12 +40,11 @@ import pandas as pd
 from matplotlib import cm
 from matplotlib.colors import Normalize
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "src"))
+from .. import KNOWN_BENCHMARKS
+from ..analysis import summary_csv_path
 
-from mlip_adsorption_energy_benchmark import KNOWN_BENCHMARKS  # noqa: E402
-from mlip_adsorption_energy_benchmark.analysis import summary_csv_path  # noqa: E402
-
+# Repo root: .../src/mlip_adsorption_energy_benchmark/cli/visualize.py -> parents[3].
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_RESULT_DIR = REPO_ROOT / "result"
 
 # ---------------------------------------------------------------------------
@@ -596,7 +598,7 @@ def main() -> int:
     if not csv_path.exists():
         print(
             f"Summary CSV not found: {csv_path}\n"
-            f"Run: python code/analyze.py --benchmark {args.benchmark}",
+            f"Run: python -m mlip_adsorption_energy_benchmark.cli.analyze --benchmark {args.benchmark}",
             file=sys.stderr,
         )
         return 1

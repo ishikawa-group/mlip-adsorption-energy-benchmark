@@ -40,7 +40,7 @@ def export_summary_csv(bench_dir: Path, name: str) -> Path | None:
     report, but with a two-row header (the anomaly-rate breakdown columns are
     labelled on the first data row). We promote that sub-header into proper
     column names, drop the helper row, and save a flat CSV that downstream
-    tools (``code/visualize.py``) can read directly.
+    tools (``cli/visualize.py``) can read directly.
     """
 
     xlsx = bench_dir / f"{name}_Benchmarking_Analysis.xlsx"
