@@ -588,6 +588,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip the per-calculator parity (MLIP vs DFT) plots.",
     )
+    parser.add_argument(
+        "--exclude-bars-scatter",
+        default=None,
+        help=(
+            "Comma-separated MLIP_name(s) to drop from the bar chart and Pareto "
+            "scatter ONLY (e.g. a gross outlier that flattens the shared axes). "
+            "They are kept in the heatmap, dashboard, per-calculator plots, and "
+            "the summary CSV/table."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -617,10 +627,20 @@ def main() -> int:
     print(f"Models   : {len(df)}  | Metrics: {len(metrics)}  | sorted by {acc}")
     print(f"Out dir  : {outdir}")
 
+    # Optionally drop gross outliers from the bar chart / scatter only (they
+    # otherwise flatten the shared axes). Kept everywhere else.
+    excluded = {
+        n.strip() for n in (args.exclude_bars_scatter or "").split(",") if n.strip()
+    }
+    bs_df = df[~df["MLIP_name"].astype(str).isin(excluded)] if excluded else df
+    if excluded:
+        kept = sorted(excluded & set(df["MLIP_name"].astype(str)))
+        print(f"Excluding from bars/scatter only: {', '.join(kept) or '(none matched)'}")
+
     if not args.no_static:
         heatmap_matplotlib(df, metrics, outdir / f"{args.benchmark}_heatmap")
-        bars_matplotlib(df, outdir / f"{args.benchmark}_bars.png")
-        scatter_matplotlib(df, outdir / f"{args.benchmark}_scatter")
+        bars_matplotlib(bs_df, outdir / f"{args.benchmark}_bars.png")
+        scatter_matplotlib(bs_df, outdir / f"{args.benchmark}_scatter")
         print("  static : heatmap.png, bars.png, scatter.png")
 
     if not args.no_html:
