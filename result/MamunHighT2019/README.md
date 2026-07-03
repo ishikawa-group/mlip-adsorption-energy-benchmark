@@ -104,10 +104,18 @@ for Normal rate, **upper-left** is more robust and faster. Point color is MAE_to
 - **Effect of CuEquivariance**: accuracy essentially unchanged, inference faster
   (e.g. `sevennet-mpa` 0.068s → `sevennet-mpa-cueq` 0.046s; `sevennet-oc20` 0.064s →
   `sevennet-oc20-cueq` 0.044s; MAE identical). The effect is larger on large datasets.
-- **modal/task dependence**: SevenNet is good on mpa/omat24/matpes_pbe/oc20, with oc22
-  slightly worse. UMA is mid-to-upper on oc20/oc25/omat but lowest on oc22. On this
-  dataset (small-molecule adsorption on alloys), modals/tasks trained on OC20 and
-  MPtrj/OMat data fit well.
+- **modal/task dependence and O\* anomalies**: on normal reactions (MAE_normal),
+  SevenNet's mpa / omat24 / matpes_pbe / oc20 are tightly clustered at 0.19–0.20 eV.
+  On MAE_total, however, **modals/tasks whose training data / task / head include the
+  Hubbard +U correction tend to show more metal-surface O\* anomalies**, degrading the
+  total. Concretely, `mpa` (MPtrj) and `omat24` (OMat24), which come from Materials
+  Project-type (PBE+U-mixed) data, break down on O\* and their MAE_total worsens to
+  0.67–0.70 eV, whereas the U-free `matpes_pbe` (MatPES) and `oc20` (OC20 / metal
+  surfaces) keep O\* stable and reach the lowest MAE_total (matpes_pbe 0.249 eV). UMA is
+  likewise mid-to-upper on oc20/oc25/omat, but `oc22` does not fit this alloy ×
+  small-molecule system and is last. For the detailed discussion of this "+U-derived
+  PBE/PBE+U PES mixing and metal-surface O\* anomalies" and the paper citations
+  (arXiv:2510.11241 / arXiv:2601.21056), see the [overview](../README.md).
 
 ## Per-calculator parity plots (prediction vs DFT)
 
