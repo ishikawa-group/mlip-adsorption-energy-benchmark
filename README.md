@@ -1,57 +1,59 @@
 # mlip-adsorption-energy-benchmark
 
-機械学習原子間ポテンシャル (MLIP) の **吸着エネルギー予測精度** を DFT 参照値に対して
-ベンチマークするための薄いワークフロー層です。
+**English** | [日本語](README_jp.md)
 
-- ベンチマーク本体（データセット・緩和計算・解析/レポート）:
+A thin workflow layer for benchmarking the **adsorption-energy accuracy** of
+machine-learning interatomic potentials (MLIPs) against DFT references.
+
+- Benchmark engine (datasets, relaxations, analysis/reporting):
   [CatBench](https://github.com/JinukMoon/catbench)
-- MLIP calculator の生成（UMA / SevenNet / MatterSim / CHGNet / NequIP を統一 API で）:
+- MLIP calculator factory (UMA / SevenNet / MatterSim / CHGNet / NequIP behind one API):
   [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit)
 
-本リポジトリは上記 2 つを繋ぎ、コマンド 1 つでローカル実行・TSUBAME4 へのジョブ投入が
-できるようにしたものです。
+This repository glues the two together so a single command runs a benchmark
+locally or submits jobs on TSUBAME4.
 
-> **命名について**: Python のパッケージ名にハイフンは使えないため、`src/` 配下の
-> import 名は `mlip_adsorption_energy_benchmark`（アンダースコア）です。
-> 設定ファイルも慣習に従い `pyproject.toml` を使用しています。
+> **Naming**: Python package names cannot contain hyphens, so the importable
+> package under `src/` is `mlip_adsorption_energy_benchmark` (underscores), and
+> the config file is the conventional `pyproject.toml`.
 
-## ディレクトリ構成
+## Layout
 
 ```
 mlip-adsorption-energy-benchmark/
-├── src/mlip_adsorption_energy_benchmark/  # パッケージ本体（関数 + CLI）
-│   ├── calculators.py   # calculator preset 定義 + build_calculator()
-│   ├── benchmarks.py     # データセット定義 + ダウンロードキャッシュ
-│   ├── runner.py         # CatBench 実行ラッパ（出力レイアウト制御）
-│   ├── analysis.py       # 解析ラッパ（parity plot / Excel / summary CSV）
-│   └── cli/              # 実行用 CLI（python -m ...cli.<name> で起動）
-│       ├── run.py        # ベンチマーク実行
-│       ├── analyze.py    # 結果解析
-│       └── visualize.py  # 結果可視化
-├── result/               # 出力: result/<benchmark>/<calculator>/（git 管理外）
-├── data/                 # データセットのダウンロードキャッシュ（git 管理外）
-└── scripts/tsubame4/     # TSUBAME4 ジョブ投入
+├── src/mlip_adsorption_energy_benchmark/  # package (functions + CLIs)
+│   ├── calculators.py   # calculator presets + build_calculator()
+│   ├── benchmarks.py     # dataset definitions + download cache
+│   ├── runner.py         # CatBench run wrapper (output-layout control)
+│   ├── analysis.py       # analysis wrapper (parity plots / Excel / summary CSV)
+│   └── cli/              # executable CLIs (run via python -m ...cli.<name>)
+│       ├── run.py        # run a benchmark
+│       ├── analyze.py    # analyse results
+│       └── visualize.py  # visualize results
+├── result/               # output: result/<benchmark>/<calculator>/ (git-ignored)
+├── data/                 # dataset download cache (git-ignored)
+└── scripts/tsubame4/     # TSUBAME4 job submission
     ├── run_tsubame_benchmark.sh
     └── submit_tsubame_jobs.py
 ```
 
-## 対応 calculator（preset）
+## Supported calculators (presets)
 
-`--calculator` には `all` または以下のプリセット名（カンマ区切り）を指定します。
-吸着エネルギー向けに task/modal のデフォルトを設定済みです（CLI で上書き可能）。
+Pass `all` or a comma-separated list of preset names to `--calculator`. Defaults
+are tuned for adsorption energies (overridable on the CLI).
 
-| preset      | backend   | デフォルト設定                    | 備考 |
-|-------------|-----------|-----------------------------------|------|
-| `uma`       | uma       | `model=uma-s-1p2`, `task=oc20`    | 触媒/吸着タスク |
-| `sevennet`  | sevennet  | `model=7net-omni`, `modal=mpa`    | 多忠実度（PBE+U） |
-| `mattersim` | mattersim | `model=5M`                        | 汎用 |
-| `chgnet`    | chgnet    | （バンドル既定）                  | 軽量・汎用 |
-| `nequip`    | nequip    | `model=L`                         | OAM（MPS 非対応） |
+| preset      | backend   | defaults                          | notes |
+|-------------|-----------|-----------------------------------|-------|
+| `uma`       | uma       | `model=uma-s-1p2`, `task=oc20`    | catalysis/adsorption task |
+| `sevennet`  | sevennet  | `model=7net-omni`, `modal=mpa`    | multi-fidelity (PBE+U) |
+| `mattersim` | mattersim | `model=5M`                        | general purpose |
+| `chgnet`    | chgnet    | (bundled default)                 | lightweight, general |
+| `nequip`    | nequip    | `model=L`                         | OAM (MPS unsupported) |
 
-### variant（同じ計算機の別設定）を一度に流す
+### Sweeping variants of one calculator
 
-`--calculator` の各要素は `preset:key=value` 形式で model/task/modal を指定でき、
-variant ごとに **別フォルダ・別ジョブ** になります（複数 variant はカンマ区切り）。
+Each `--calculator` item may be a `preset:key=value` spec (key in model/task/modal),
+giving every variant its **own folder and job** (comma-separate multiple specs):
 
 ```
 uma:task=oc22            -> result/<benchmark>/uma-oc22/
@@ -60,20 +62,20 @@ nequip:model=m           -> result/<benchmark>/nequip-m/
 chgnet:model=0.3.0       -> result/<benchmark>/chgnet-0.3.0/
 ```
 
-preset 名のみ（または `all`）の場合はラベル＝preset 名（既定設定）になります。
+A bare preset name (or `all`) keeps its preset-name label and default settings.
 
-## 対応 benchmark（データセット）
+## Supported benchmarks (datasets)
 
-CatBench が Zenodo から取得するデータセット名をそのまま指定します。主なもの:
+Names are passed straight to CatBench (fetched from Zenodo). Common ones:
 
-- `MamunHighT2019` — 2,035 二元合金上の小分子吸着（約 45k）
-- `ComerGeneralized2024` — 金属酸化物上の吸着（325）
-- `BM_dataset` — 大型分子 32 個（小さく動作確認向き）
-- ほか `OC20-Dense`, `GameNetOx_oxide`, `FG_dataset`
+- `MamunHighT2019` — ~45k small-molecule adsorptions on 2,035 bimetallic alloys
+- `ComerGeneralized2024` — 325 adsorptions on metal oxides
+- `BM_dataset` — 32 large molecules (small; good for smoke tests)
+- also `OC20-Dense`, `GameNetOx_oxide`, `FG_dataset`
 
-## インストール
+## Installation
 
-Python は `>=3.12,<3.14`（ase-calculator-kit の制約）。CUDA 環境推奨。
+Python `>=3.12,<3.14` (ase-calculator-kit constraint). CUDA recommended.
 
 ```bash
 python3.12 -m venv .venv
@@ -81,121 +83,118 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-依存（CatBench / ase-calculator-kit）は GitHub から取得します。`.venv` は git 管理外です。
+CatBench and ase-calculator-kit are installed from GitHub. `.venv` is git-ignored.
 
-## ローカル実行
+## Local usage
 
-CLI はパッケージのサブモジュールとして `python -m` で起動します
-（`pip install -e .` 済みならそのまま、未インストールなら先頭に `PYTHONPATH=src` を付与）。
+CLIs are run as package submodules via `python -m` (works directly after
+`pip install -e .`; otherwise prefix with `PYTHONPATH=src`).
 
 ```bash
-# 1 calculator を 1 データセットで（動作確認は小さい BM_dataset を CPU で）
+# one calculator on one dataset (smoke test: small BM_dataset on CPU)
 python -m mlip_adsorption_energy_benchmark.cli.run --benchmark BM_dataset --calculator chgnet --device cpu
 
-# 全 calculator を逐次実行（GPU 推奨）
+# all calculators, sequentially (GPU recommended)
 python -m mlip_adsorption_energy_benchmark.cli.run --benchmark MamunHighT2019 --calculator all --device cuda
 
-# 解析（parity plot + Excel レポート + サマリ CSV）
+# analysis (parity plots + Excel report + summary CSV)
 python -m mlip_adsorption_energy_benchmark.cli.analyze --benchmark MamunHighT2019
 
-# 可視化（catbench.org 風: 指標ヒートマップ表 + Pareto 散布図）
+# visualization (catbench.org-style: metric heatmap-table + Pareto scatter)
 python -m mlip_adsorption_energy_benchmark.cli.visualize --benchmark MamunHighT2019
 ```
 
-出力は `result/<benchmark>/<calculator>/` に格納されます。
+### Visualization (`cli/visualize.py`)
 
-### 可視化（`cli/visualize.py`）
+Reads the **`result/<benchmark>/<benchmark>_summary.csv`** written by `analyze.py`
+and renders [catbench.org](https://catbench.org)-style figures into
+`result/<benchmark>/viz/`:
 
-`analyze.py` が出力する **`result/<benchmark>/<benchmark>_summary.csv`** を読み、
-[catbench.org](https://catbench.org) 風の図を `result/<benchmark>/viz/` に生成します。
+- **Metric heatmap-table**: one row per model, one column per metric (MAE /
+  Normal% / anomaly breakdown / ADwT / AMDwT / Time/step ...). Each column is
+  colored independently with **viridis** (bright = better), the raw value is
+  printed in each cell, with a colorbar.
+- **Single-metric bar charts**: MAE_total / MAE_normal / Time/step as horizontal
+  bars **sorted best-first** (three metrics stacked in one figure, viridis
+  colorbar = brighter is better).
+- **Pareto scatter**: Time/step vs Total MAE, Time/step vs Normal MAE
+  (Accuracy-Efficiency), and Time/step vs Normal rate % (Robustness-Efficiency),
+  points colored by MAE (bright = better).
+- **Per-calculator parity plots** (`viz/per_calculator/`): predicted vs DFT for
+  each calculator, in **Total** and **Normal (anomalies & migration excluded)**
+  panels, points **colored by adsorbate**. The Normal/anomaly split reuses
+  CatBench's own classifier (`_anomaly_detection`) so it matches the official
+  numbers. Also writes `<label>_parity.csv` and CatBench's per-adsorbate
+  `<label>_adsorbate_breakdown.csv`. Disable with `--no-per-calculator`.
+- Outputs: static `*_heatmap.png` / `*_scatter.png` / (per-calc) `<label>_parity.png`
+  and interactive `*_dashboard.html` / (per-calc) `<label>_parity.html` (plotly).
 
-- **指標ヒートマップ表**: 1 行 = 1 モデル、列 = 各指標（MAE / Normal% / anomaly 内訳 /
-  ADwT / AMDwT / Time/step 等）。各列を **viridis** で独立に色付け（明るい = 良い）し、
-  セルに実数値を表示、colorbar 付き。
-- **単一指標の棒グラフ**: MAE_total / MAE_normal / Time/step を**良い順**に並べた横棒グラフ
-  （3 指標を1枚に縦並び、viridis カラーバー付き＝明るいほど良い）。
-- **Pareto 散布図**: Time/step vs Total MAE、Time/step vs Normal MAE
-  （Accuracy-Efficiency）、Time/step vs Normal rate%（Robustness-Efficiency）。
-  点は MAE で viridis 着色（明るい=良い）。
-- **計算機ごとの詳細 parity 図**（`viz/per_calculator/`）: 各 calculator の予測 vs DFT を
-  **Total** と **Normal（anomaly/migration 除外）**の2パネルで出力。点は**吸着種で色分け**。
-  Normal/anomaly の分類は CatBench 本体の分類器（`_anomaly_detection`）を再利用するため
-  公式数値と一致。あわせて `<label>_parity.csv` と CatBench の吸着種別ブレークダウン
-  `<label>_adsorbate_breakdown.csv` も出力。`--no-per-calculator` で無効化可。
-- 出力: 静的 `*_heatmap.png` / `*_scatter.png` /（per-calc）`<label>_parity.png` と
-  インタラクティブ `*_dashboard.html` /（per-calc）`<label>_parity.html`（plotly）。
+> Run `analyze.py` first so the summary CSV exists.
 
-> `analyze.py` を先に実行してサマリ CSV を作成してください。
+Output is written to `result/<benchmark>/<calculator>/`.
 
-## TSUBAME4 でのジョブ投入
+## TSUBAME4 job submission
 
-`(benchmark × calculator)` ごとに 1 ジョブを投入し、各 calculator を別 GPU で並列実行します。
+Submits one job per `(benchmark, calculator)` pair so each calculator runs on a
+separate GPU in parallel.
 
 ```bash
-# clone 後、計算ノードで仮想環境を作成（前述のインストール手順）
+# after cloning, create the venv on a compute node (see Installation)
 
-# MamunHighT2019 と ComerGeneralized2024 を全 calculator 分まとめて投入
+# submit MamunHighT2019 and ComerGeneralized2024 for all calculators
 python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 \
     --calculator all
 
-# 投入せずコマンドだけ確認
+# preview qsub commands without submitting
 python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 --calculator all --dry-run
 ```
 
-- ジョブ設定: `-g tga-ishikawalab`、`gpu_h=1`、`h_rt=24:00:00`、`module load cuda`
-- デバイス既定は `cuda`
-- ログは `result/<benchmark>/log/tsubame_jobs/<calculator>/` に出力
+- Job settings: `-g tga-ishikawalab`, `gpu_h=1`, `h_rt=24:00:00`, `module load cuda`
+- Default device is `cuda`
+- Logs go to `result/<benchmark>/log/tsubame_jobs/<calculator>/`
 
-主な引数: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal`（preset 上書き）,
-`--group`, `--save-files`, `--cueq`, `--dry-run`。
+Key flags: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal` (preset
+overrides), `--group`, `--save-files`, `--cueq`, `--dry-run`.
 
-`--dispersion` は Grimme-D3(BJ) 分散力補正を有効化します。汎函数(xc)は
-ase-calculator-kit (>= v0.2.2) の方針表に従い model/modal/task ごとに自動選択され
-（例: OC20=RPBE, それ以外の多くは PBE, r2SCAN系=r2scan）、訓練時に分散を含むモデル
-（UMA `oc25` 等）は二重計上を避けるため拒否されます。結果は **`<label>-d3`** の別ディレクトリに保存。
+`--cueq` enables SevenNet's CuEquivariance acceleration (needs cuequivariance
+installed). Its results are saved under a separate **`<label>-cueq`** folder
+(e.g. `sevennet-mpa-cueq`) and separate jobs, so they never overwrite the
+non-cueq runs.
 
-`--cueq` は SevenNet の CuEquivariance を有効化します（cuequivariance 導入環境が必要）。
-結果は **`<label>-cueq`**（例 `sevennet-mpa-cueq`）の別ディレクトリ・別ジョブに保存され、
-非 cueq の結果を上書きしません（`--cueq --dispersion` 併用時は `<label>-cueq-d3`）。例:
+> **Note on inodes (file count)**
+> With `save_files=True`, CatBench creates per-structure `log/<key>/` and
+> `traj/<key>/` directories. On large datasets (e.g. MamunHighT2019 with ~45k
+> adsorptions) this reaches tens of thousands of files per job and can exhaust
+> the shared filesystem's **inode quota** (`OSError: [Errno 122] Disk quota
+> exceeded`, even when free space remains). TSUBAME submission therefore
+> **omits per-structure files by default** (passes `--no-save-files`). Only the
+> small `*_result.json` files are written, which is enough for MAE/parity
+> analysis. Pass `--save-files` only when you need trajectories.
 
-```bash
-python scripts/tsubame4/submit_tsubame_jobs.py \
-    --benchmark MamunHighT2019,ComerGeneralized2024 --device cuda --cueq \
-    --calculator "sevennet:modal=mpa,sevennet:modal=omat24,sevennet:modal=matpes_pbe,sevennet:modal=oc20,sevennet:modal=oc22,sevennet:modal=matpes_r2scan"
-```
+### Resuming jobs that hit the walltime
 
-> **inode（ファイル数）に関する注意**
-> CatBench は `save_files=True` だと構造ごとに `log/<key>/`・`traj/<key>/` を作成し、
-> 大規模データ（例: MamunHighT2019 は ~45k 吸着）では 1 ジョブあたり数万ファイルに達して
-> 共有ファイルシステムの **inode クォータ**を使い切ります（`OSError: [Errno 122]
-> Disk quota exceeded`。容量に余裕があっても起きます）。
-> このため TSUBAME 投入は **既定で per-structure ファイルを出力しません**
-> （`run_benchmark.py` に `--no-save-files` を渡す）。結果は `*_result.json` 等の小さな
-> JSON のみで、MAE/parity 解析には十分です。trajectory が必要な場合のみ `--save-files` を付与。
-
-### 再開（resume）— 大規模データが walltime で切れた場合
-
-MamunHighT2019（~45k 吸着）のような大規模データは 1 ジョブの 24h walltime 内に
-終わらないことがあります。CatBench は `*_structure_cache.json` から **自動で続きを再開**
-（計算済み構造は `Skipping already calculated` でスキップ）するため、**同じコマンドで
-再投入するだけで続きから完了**できます。計算は無駄になりません。
+Large datasets (e.g. MamunHighT2019, ~45k adsorptions) may not finish within a
+single 24h job. CatBench **auto-resumes** from `*_structure_cache.json` (already
+done structures are `Skipping already calculated`), so **just re-submitting the
+same command continues from where it stopped** — no work is wasted.
 
 ```bash
-# 24h 後など、未完了ジョブだけを再投入（同じ --calculator / 設定で）
+# e.g. after 24h, re-submit; only unfinished jobs resume
 python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 --device cuda \
-    --calculator "<初回と同じ spec>"
+    --calculator "<same spec as the first run>"
 ```
 
-- 既定で **完了済み**（`result/<benchmark>/<label>/<label>_result.json` がある）calculator は
-  自動スキップし、**未完了/時間切れのものだけ resume** します。
-- **重要**: 途中経過 `result/<benchmark>/result/<label>/`（cache 含む）を消さないこと。
-- 完了済みも含めて最初から再計算したい場合のみ `--rerun-completed` を付けます。
-- 再開が確実に効く条件は「relaxation 設定（`--f-crit-relax` / `--n-crit-relax` / `--mode` 等）を
-  初回と同一にすること」。変更するとキャッシュは破棄され再計算されます。
+- Calculators already **completed** (a `result/<benchmark>/<label>/<label>_result.json`
+  exists) are skipped by default; only timed-out ones resume.
+- **Important**: do not delete the in-progress `result/<benchmark>/result/<label>/`
+  (it holds the cache).
+- Use `--rerun-completed` to recompute everything from scratch.
+- Resume only works if the relaxation settings (`--f-crit-relax` / `--n-crit-relax`
+  / `--mode`) match the first run; changing them invalidates the cache.
 
-## 英語版
+## Japanese version
 
-[README_en.md](README_en.md) を参照してください。
+See [README_jp.md](README_jp.md).

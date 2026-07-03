@@ -1,61 +1,55 @@
-# ComerGeneralized2024 — MLIP Adsorption-Energy Benchmark Results
+# ComerGeneralized2024 — MLIP 吸着エネルギーベンチマーク結果
 
-**English** | [日本語](README_jp.md)
+[English](README.md) | **日本語**
 
-## Benchmark overview
+## ベンチマーク概要
 
-**ComerGeneralized2024** is a dataset of DFT reference adsorption energies for
-adsorption reactions on metal-oxide surfaces. The adsorbates are the two species
-**O\*** and **OH\***, for **325 reactions** in total
-(source: [CatBench](https://catbench.org/?dataset=ComerGeneralized2024) / Zenodo).
-This page compares the adsorption energies predicted by machine-learning
-interatomic potentials (MLIPs) against DFT, evaluating accuracy, robustness, and
-compute cost (**23 calculator/variants** compared).
+**ComerGeneralized2024** は、金属酸化物表面上の吸着反応に対する DFT 参照吸着エネルギーの
+データセットで、吸着種は **O\*** と **OH\*** の 2 種・計 **325 反応**です
+（出典: [CatBench](https://catbench.org/?dataset=ComerGeneralized2024) / Zenodo）。
+本ページは、機械学習原子間ポテンシャル (MLIP) が予測する吸着エネルギーを DFT と比較し、
+精度・頑健性・計算コストを評価した結果です（**23 calculator/variant** を比較）。
 
-- Calculators compared: UMA (fairchem), SevenNet (7net-omni, each modal), MatterSim, CHGNet, NequIP-OAM
-- A trailing **`-cueq`** is SevenNet's **CuEquivariance** accelerated build (the model
-  itself is identical, so accuracy is the same but inference is faster)
-- Settings: `mode=basic` (structure relaxation), `n_seeds=3`, `f_crit_relax=0.05`
+- 比較した calculator: UMA(fairchem), SevenNet(7net-omni, 各 modal), MatterSim, CHGNet, NequIP-OAM
+- 末尾 **`-cueq`** は SevenNet の **CuEquivariance** 高速化版（モデル自体は同一＝精度同等、推論が高速）
+- 計算条件: `mode=basic`（構造緩和）, `n_seeds=3`, `f_crit_relax=0.05`
 
-### Meaning of the metrics
+### 指標の意味
 
-| Metric | Description |
+| 指標 | 説明 |
 |---|---|
-| MAE_total (eV) | Mean absolute error of predicted vs DFT adsorption energy over all reactions |
-| MAE_normal (eV) | MAE over normal reactions only (anomalies and adsorbate migration excluded) |
-| Normal rate (%) | Fraction of reactions classified as normal (higher = more robust) |
-| Anomaly rate (%) | Fraction with energy anomaly / unphysical relaxation / reproduction failure (lower = better) |
-| ADwT / AMDwT (%) | Fraction of predictions within threshold (higher = better) |
-| Time per step (s) | Compute time per optimization step (lower = faster) |
+| MAE_total (eV) | 全反応での予測 vs DFT 吸着エネルギーの平均絶対誤差 |
+| MAE_normal (eV) | anomaly・吸着種 migration を除いた正常反応のみの MAE |
+| Normal rate (%) | 正常に分類された反応の割合（高いほど頑健） |
+| Anomaly rate (%) | エネルギー異常・非物理緩和・再現失敗の割合（低いほど良い） |
+| ADwT / AMDwT (%) | しきい値内に収まる予測の割合（高いほど良い） |
+| Time per step (s) | 1 最適化ステップあたりの計算時間（低いほど速い） |
 
-## Overall comparison
+## 全体比較
 
-### Metric heatmap table
+### 指標ヒートマップ表
 
-Each column is normalized independently with viridis so that **brighter (yellow) =
-higher performance** (metrics where smaller is better, such as MAE and time, are
-inverted). Each cell shows the raw value.
+各列を viridis で独立に正規化し、**明るい（黄色）ほど高性能**になるよう色付けしています
+（MAE・時間など小さいほど良い指標は反転）。セル内は実数値です。
 
 ![metric heatmap](analysis/ComerGeneralized2024_heatmap.png)
 
-### Single-metric ranking (bar charts)
+### 単一指標ランキング（棒グラフ）
 
-Horizontal bars for MAE_total / MAE_normal / Time per step, **sorted best-first
-(smaller = higher)**. The viridis colorbar means **brighter = higher performance
-(lower value)**.
+MAE_total / MAE_normal / Time per step を **良い順（小さいほど上）** に並べた横棒グラフです。
+viridis カラーバーで、**明るいほど高性能（低い値）** を表します。
 
 ![single-metric bars](analysis/ComerGeneralized2024_bars.png)
 
-### Pareto scatter (accuracy / robustness vs compute cost)
+### Pareto 散布図（精度・頑健性 vs 計算コスト）
 
-From left: "Time/step vs MAE_total", "Time/step vs MAE_normal", "Time/step vs
-Normal rate". **Lower-left (low cost, low MAE)** means better accuracy-efficiency;
-for Normal rate, **upper-left** is more robust and faster. Point color is MAE_total
-(brighter = lower MAE = better).
+左から「Time/step vs MAE_total」「Time/step vs MAE_normal」「Time/step vs Normal rate」。
+**左下（低コスト・低 MAE）** ほど精度効率が良く、Normal rate は **左上** ほど頑健かつ高速です。
+点の色は MAE_total（明るいほど低 MAE＝良い）。
 
 ![pareto scatter](analysis/ComerGeneralized2024_scatter.png)
 
-### Summary table (ascending MAE_normal)
+### サマリ表（MAE_normal 昇順）
 
 | # | MLIP | MAE_total (eV) | MAE_normal (eV) | Normal (%) | ADwT (%) | AMDwT (%) | Time/step (s) |
 |---:|---|---:|---:|---:|---:|---:|---:|
@@ -83,22 +77,18 @@ for Normal rate, **upper-left** is more robust and faster. Point color is MAE_to
 | 22 | uma-oc22 | 1.126 | 0.991 | 84.615 | 86.499 | 90.056 | 0.055 |
 | 23 | nequip-l | 1.257 | 1.056 | 80.000 | 83.091 | 86.708 | 0.080 |
 
-### Key findings
+### 主な結果
 
-- **Best accuracy**: `uma-omat` (MAE_normal = 0.130 eV, MAE_total = 0.248 eV).
-- **Worst accuracy**: `nequip-l` (MAE_normal = 1.056 eV).
-- **Fastest**: `nequip-s` (0.008 s/step).
-- **Effect of CuEquivariance**: accuracy essentially unchanged, inference faster
-  (`sevennet-omat24` 0.088s (MAE 0.165) → `sevennet-omat24-cueq` 0.041s (MAE 0.165);
-  `sevennet-mpa` 0.064s (MAE 0.183) → `sevennet-mpa-cueq` 0.044s (MAE 0.183)).
-- On this dataset (oxide O/OH), SevenNet's `omat24`/`mpa` modals and UMA's `omat`
-  task performed well.
+- **最高精度**: `uma-omat`（MAE_normal = 0.130 eV, MAE_total = 0.248 eV）。
+- **最低精度**: `nequip-l`（MAE_normal = 1.056 eV）。
+- **最速**: `nequip-s`（0.008 s/step）。
+- **CuEquivariance の効果**: 精度はほぼ同等で推論が高速化（`sevennet-omat24` 0.088s (MAE 0.165) → `sevennet-omat24-cueq` 0.041s (MAE 0.165); `sevennet-mpa` 0.064s (MAE 0.183) → `sevennet-mpa-cueq` 0.044s (MAE 0.183)）。
+- 本データセット（酸化物 O/OH）では SevenNet の `omat24`/`mpa` modal、UMA の `omat` task が良好でした。
 
-## Per-calculator parity plots (prediction vs DFT)
+## 各計算機の詳細 parity 図（予測 vs DFT）
 
-Left = Total (all reactions), right = Normal (anomalies/migration excluded). Points
-are colored by adsorbate (O / OH); the dashed line is y=x. The Normal/anomaly
-classification follows CatBench's own classifier. (Ascending MAE_normal.)
+左 = Total（全反応）, 右 = Normal（anomaly/migration 除外）。点は吸着種（O / OH）で色分け、
+破線は y=x。Normal/anomaly の分類は CatBench 本体の分類器に準拠しています。
 
 ### 1. uma-omat
 

@@ -1,66 +1,60 @@
-# MamunHighT2019 — MLIP Adsorption-Energy Benchmark Results
+# MamunHighT2019 — MLIP 吸着エネルギーベンチマーク結果
 
-**English** | [日本語](README_jp.md)
+[English](README.md) | **日本語**
 
-## Benchmark overview
+## ベンチマーク概要
 
-**MamunHighT2019** is a large-scale benchmark of DFT reference adsorption energies for
-**small-molecule adsorption** on **2,035 binary-alloy surfaces**, with **45,130 reactions**
-in total (reaction key example: `Ag12_CH4(g) - H2(g) + * -> CH2*` = `<slab>_<gas-phase reaction> -> <adsorbate>*`;
-source: [CatBench](https://catbench.org/?dataset=MamunHighT2019) / Zenodo).
-The adsorbates are **C / H / N / O / S small-molecule fragments** (CH\*, CH2\*, CH3\*, NH\*,
-OH\*, SH\*, etc.). This page compares the adsorption energies predicted by machine-learning
-interatomic potentials (MLIPs) against DFT, evaluating accuracy, robustness, and compute
-cost (**21 calculator/variants completed so far** are compared).
+**MamunHighT2019** は、**2,035 種の二元合金表面**上の **小分子吸着**に対する DFT 参照吸着
+エネルギーのデータセットで、計 **45,130 反応**という大規模ベンチマークです
+（reaction key 例: `Ag12_CH4(g) - H2(g) + * -> CH2*` = `<スラブ>_<気相反応> -> <吸着種>*`。
+出典: [CatBench](https://catbench.org/?dataset=MamunHighT2019) / Zenodo）。
+吸着種は **C / H / N / O / S 系の小分子フラグメント**（CH\*, CH2\*, CH3\*, NH\*, OH\*, SH\* など）です。
+本ページは、機械学習原子間ポテンシャル (MLIP) が予測する吸着エネルギーを DFT と比較し、
+精度・頑健性・計算コストを評価した結果です（**現時点で完了済みの 21 calculator/variant** を比較）。
 
-- Calculators compared: UMA (fairchem), SevenNet (7net-omni, each modal), MatterSim, CHGNet, NequIP-OAM
-- A trailing **`-cueq`** is SevenNet's **CuEquivariance** accelerated build (the model
-  itself is identical, so accuracy is the same but inference is faster)
-- This run has **no dispersion correction** (small molecules on metal surfaces; a separate
-  axis from the `-d3` FG_dataset)
-- Settings: `mode=basic` (structure relaxation, LBFGS), `n_seeds=3`, `f_crit_relax=0.05`, `n_crit_relax=999`
-- **`nequip-l` / `nequip-XL` are still computing** and are not yet included here (they
-  have been resubmitted; the analysis will be regenerated once they finish)
+- 比較した calculator: UMA(fairchem), SevenNet(7net-omni, 各 modal), MatterSim, CHGNet, NequIP-OAM
+- 末尾 **`-cueq`** は SevenNet の **CuEquivariance** 高速化版（モデル自体は同一＝精度同等、推論が高速）
+- 本ランは **分散力補正なし**（金属表面上の小分子吸着のため。`-d3` 付きの FG_dataset とは別軸）
+- 計算条件: `mode=basic`（構造緩和, LBFGS）, `n_seeds=3`, `f_crit_relax=0.05`, `n_crit_relax=999`
+- **`nequip-l` / `nequip-XL` は計算継続中**のため本集計には未収録（完了後に再生成予定）
 
-### Meaning of the metrics
+### 指標の意味
 
-| Metric | Description |
+| 指標 | 説明 |
 |---|---|
-| MAE_total (eV) | Mean absolute error of predicted vs DFT adsorption energy over all reactions |
-| MAE_normal (eV) | MAE over normal reactions only (anomalies and adsorbate migration excluded) |
-| Normal rate (%) | Fraction of reactions classified as normal (higher = more robust) |
-| Anomaly rate (%) | Fraction with energy anomaly / unphysical relaxation / reproduction failure (lower = better) |
-| ADwT / AMDwT (%) | Fraction of predictions within threshold (higher = better) |
-| Time per step (s) | Compute time per optimization step (lower = faster) |
+| MAE_total (eV) | 全反応での予測 vs DFT 吸着エネルギーの平均絶対誤差 |
+| MAE_normal (eV) | anomaly・吸着種 migration を除いた正常反応のみの MAE |
+| Normal rate (%) | 正常に分類された反応の割合（高いほど頑健） |
+| Anomaly rate (%) | エネルギー異常・非物理緩和・再現失敗の割合（低いほど良い） |
+| ADwT / AMDwT (%) | しきい値内に収まる予測の割合（高いほど良い） |
+| Time per step (s) | 1 最適化ステップあたりの計算時間（低いほど速い） |
 
-## Overall comparison
+## 全体比較
 
-### Metric heatmap table
+### 指標ヒートマップ表
 
-Each column is normalized independently with viridis so that **brighter (yellow) =
-higher performance** (metrics where smaller is better, such as MAE and time, are
-inverted). Each cell shows the raw value.
+各列を viridis で独立に正規化し、**明るい（黄色）ほど高性能**になるよう色付けしています
+（MAE・時間など小さいほど良い指標は反転）。セル内は実数値です。
 
 ![metric heatmap](analysis/MamunHighT2019_heatmap.png)
 
-### Single-metric ranking (bar charts)
+### 単一指標ランキング（棒グラフ）
 
-Horizontal bars for MAE_total / MAE_normal / Time per step, **sorted best-first
-(smaller = higher)**. The viridis colorbar means **brighter = higher performance
-(lower value)**. (This dataset has no prominent outlier, so all 21 are shown.)
+MAE_total / MAE_normal / Time per step を **良い順（小さいほど上）** に並べた横棒グラフです。
+viridis カラーバーで、**明るいほど高性能（低い値）** を表します。
+（本データセットは突出した外れ値が無いため、全 21 件を表示しています。）
 
 ![single-metric bars](analysis/MamunHighT2019_bars.png)
 
-### Pareto scatter (accuracy / robustness vs compute cost)
+### Pareto 散布図（精度・頑健性 vs 計算コスト）
 
-From left: "Time/step vs MAE_total", "Time/step vs MAE_normal", "Time/step vs
-Normal rate". **Lower-left (low cost, low MAE)** means better accuracy-efficiency;
-for Normal rate, **upper-left** is more robust and faster. Point color is MAE_total
-(brighter = lower MAE = better).
+左から「Time/step vs MAE_total」「Time/step vs MAE_normal」「Time/step vs Normal rate」。
+**左下（低コスト・低 MAE）** ほど精度効率が良く、Normal rate は **左上** ほど頑健かつ高速です。
+点の色は MAE_total（明るいほど低 MAE＝良い）。
 
 ![pareto scatter](analysis/MamunHighT2019_scatter.png)
 
-### Summary table (ascending MAE_normal)
+### サマリ表（MAE_normal 昇順）
 
 | # | MLIP | MAE_total (eV) | MAE_normal (eV) | Normal (%) | ADwT (%) | AMDwT (%) | Time/step (s) |
 |---:|---|---:|---:|---:|---:|---:|---:|
@@ -86,34 +80,30 @@ for Normal rate, **upper-left** is more robust and faster. Point color is MAE_to
 | 20 | nequip-s | 1.110 | 0.544 | 74.952 | 76.491 | 84.174 | 0.008 |
 | 21 | uma-oc22 | 1.833 | 0.635 | 58.788 | 72.618 | 82.921 | 0.058 |
 
-### Key findings
+### 主な結果
 
-- **Best accuracy (Normal)**: `sevennet-mpa`(-cueq) (MAE_normal = 0.190 eV). The top
-  group is SevenNet's modals (mpa / omat24 / matpes_pbe / oc20) tightly clustered at
-  0.19–0.20 eV, followed by `uma-oc20` (0.211 eV).
-- **Best accuracy (Total)**: `sevennet-matpes_pbe` (MAE_total = 0.249 eV, and also the
-  highest Normal rate at 90.3%). On MAE_total, the matpes_pbe / oc20 family beats the
-  mpa/omat24 family (0.67–0.70 eV), showing that **for the overall picture including
-  anomalies, the matpes_pbe / oc20 modals are more robust**.
-- **Worst accuracy**: `uma-oc22` (MAE_normal = 0.635 eV, MAE_total = 1.833 eV, Normal
-  rate 58.8%). The OC22 task does not fit this alloy × small-molecule system.
-- **Fastest**: `nequip-s` (0.008 s/step), then `mattersim-5M` (0.020) and
-  `nequip-m` / `chgnet-0.3.0` (0.023). Their accuracy is mid-tier or below, however, so
-  **for the accuracy-speed balance `sevennet-*-cueq` is excellent** (0.044–0.047 s/step
-  at MAE_normal 0.19–0.26 eV).
-- **Effect of CuEquivariance**: accuracy essentially unchanged, inference faster
-  (e.g. `sevennet-mpa` 0.068s → `sevennet-mpa-cueq` 0.046s; `sevennet-oc20` 0.064s →
-  `sevennet-oc20-cueq` 0.044s; MAE identical). The effect is larger on large datasets.
-- **modal/task dependence**: SevenNet is good on mpa/omat24/matpes_pbe/oc20, with oc22
-  slightly worse. UMA is mid-to-upper on oc20/oc25/omat but lowest on oc22. On this
-  dataset (small-molecule adsorption on alloys), modals/tasks trained on OC20 and
-  MPtrj/OMat data fit well.
+- **最高精度（Normal）**: `sevennet-mpa`(-cueq)（MAE_normal = 0.190 eV）。上位は SevenNet の
+  各 modal（mpa / omat24 / matpes_pbe / oc20）が 0.19–0.20 eV で拮抗し、`uma-oc20`（0.211 eV）が続く。
+- **最高精度（Total）**: `sevennet-matpes_pbe`（MAE_total = 0.249 eV, Normal rate 90.3% も最高）。
+  MAE_total では mpa/omat24 系（0.67–0.70 eV）より matpes_pbe / oc20 系の方が良く、
+  **anomaly を含めた総合では matpes_pbe / oc20 modal が頑健**であることがわかる。
+- **最低精度**: `uma-oc22`（MAE_normal = 0.635 eV, MAE_total = 1.833 eV, Normal rate 58.8%）。
+  OC22 task はこの合金×小分子系には不適合。
+- **最速**: `nequip-s`（0.008 s/step）、次いで `mattersim-5M`（0.020）/ `nequip-m`・`chgnet-0.3.0`（0.023）。
+  ただし精度は中位以下で、**精度・速度のバランスでは `sevennet-*-cueq`（0.044–0.047 s/step で
+  MAE_normal 0.19–0.26 eV）が優秀**。
+- **CuEquivariance の効果**: 精度はほぼ同等のまま推論が高速化
+  （例: `sevennet-mpa` 0.068s → `sevennet-mpa-cueq` 0.046s、`sevennet-oc20` 0.064s →
+  `sevennet-oc20-cueq` 0.044s。MAE は一致）。大規模データほど効果が大きい。
+- **modal/task 依存**: SevenNet は mpa/omat24/matpes_pbe/oc20 が良好、oc22 はやや劣化。
+  UMA は oc20/oc25/omat が中上位だが oc22 が最下位。本データセット（合金上の小分子吸着）では
+  OC20 系・MPtrj/OMat 系で学習した modal/task が良くフィットする。
 
-## Per-calculator parity plots (prediction vs DFT)
+## 各計算機の詳細 parity 図（予測 vs DFT）
 
-Left = Total (all reactions), right = Normal (anomalies/migration excluded). Points
-are colored by **adsorbate**; the dashed line is y=x. The Normal/anomaly classification
-follows CatBench's own classifier. (Ascending MAE_normal.)
+左 = Total（全反応）, 右 = Normal（anomaly/migration 除外）。点は**吸着種**で色分け、
+破線は y=x。Normal/anomaly の分類は CatBench 本体の分類器に準拠しています。
+（MAE_normal 昇順）
 
 ### 1. sevennet-mpa-cueq
 
