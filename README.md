@@ -195,6 +195,23 @@ python scripts/tsubame4/submit_tsubame_jobs.py \
 - Resume only works if the relaxation settings (`--f-crit-relax` / `--n-crit-relax`
   / `--mode`) match the first run; changing them invalidates the cache.
 
+## Acknowledgements and citation
+
+This repository is a thin workflow layer built on top of two open-source tools.
+If you use it, please cite/credit them:
+
+- **CatBench** — the benchmark framework, classifier, and datasets used here.
+  Moon et al., "CatBench framework for benchmarking machine learning interatomic
+  potentials in adsorption energy predictions for heterogeneous catalysis,"
+  *Cell Reports Physical Science* (2025).
+  - Code: <https://github.com/JinukMoon/CatBench> (DOI: 10.5281/zenodo.17172022)
+  - Datasets: <https://doi.org/10.5281/zenodo.17157086> · <https://catbench.org>
+  - The benchmark datasets (ComerGeneralized2024, MamunHighT2019, FG_dataset, …) are
+    fetched through CatBench from Zenodo, and **all DFT adsorption-energy reference
+    values originate from CatBench's dataset collection.**
+- **ase-calculator-kit** — the unified MLIP calculator factory (a dependency):
+  <https://github.com/ishikawa-group/ase-calculator-kit>
+
 ## Japanese version
 
 See [README_jp.md](README_jp.md).

@@ -198,6 +198,23 @@ python scripts/tsubame4/submit_tsubame_jobs.py \
 - 再開が確実に効く条件は「relaxation 設定（`--f-crit-relax` / `--n-crit-relax` / `--mode` 等）を
   初回と同一にすること」。変更するとキャッシュは破棄され再計算されます。
 
+## 謝辞・引用
+
+本リポジトリは 2 つのオープンソースツールの上に載せた薄いワークフロー層です。利用する
+場合は以下を引用・クレジットしてください。
+
+- **CatBench** — 本ベンチマークのフレームワーク・分類器・データセットの出典。
+  Moon et al., "CatBench framework for benchmarking machine learning interatomic
+  potentials in adsorption energy predictions for heterogeneous catalysis,"
+  *Cell Reports Physical Science* (2025).
+  - コード: <https://github.com/JinukMoon/CatBench>（DOI: 10.5281/zenodo.17172022）
+  - データセット: <https://doi.org/10.5281/zenodo.17157086> ／ <https://catbench.org>
+  - 本リポジトリのベンチマークデータセット（ComerGeneralized2024, MamunHighT2019,
+    FG_dataset など）は CatBench 経由で Zenodo から取得しており、**DFT 吸着エネルギーの
+    参照値はすべて CatBench のデータセット集に由来します。**
+- **ase-calculator-kit** — MLIP calculator を統一生成する依存ツール:
+  <https://github.com/ishikawa-group/ase-calculator-kit>
+
 ## English version
 
 [README.md](README.md) を参照してください。
