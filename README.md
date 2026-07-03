@@ -19,10 +19,14 @@ locally or submits jobs on TSUBAME4.
 
 ## Why this repository (in addition to CatBench)
 
-[CatBench](https://github.com/JinukMoon/catbench) already provides the datasets,
-relaxation driver, and analysis. This repository adds a thin layer on top so that,
-**whenever a new MLIP (or a new modal / task / dispersion variant) is released, we can
-verify and compare it in our own environment right away**:
+[CatBench](https://github.com/JinukMoon/catbench) provides the datasets, relaxation
+driver, and analysis, and also **already publishes comparison results** (a public
+leaderboard at [catbench.org](https://catbench.org)). Those results, however, cover a
+fixed set of models at a given point in time — a **just-released MLIP is not on the
+leaderboard yet**, and we often want to reproduce the numbers ourselves rather than take
+them as given. This repository is a thin layer on top so that, **whenever a new MLIP
+(or a new modal / task / dispersion variant) is released, we can benchmark and compare
+it in our own environment right away**:
 
 - **Drop-in models via one unified API.** New calculators come through
   [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit), so adding

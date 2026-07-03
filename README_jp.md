@@ -19,9 +19,13 @@
 
 ## このリポジトリの目的（CatBench に加えて）
 
-[CatBench](https://github.com/JinukMoon/catbench) がデータセット・緩和計算・解析を提供します。
-本リポジトリはその上に薄い層を足し、**新しい MLIP（や新しい modal / task / 分散補正の variant）が
-リリースされたときに、すぐ自分たちの環境で検証・比較できる**ことを狙いとしています。
+[CatBench](https://github.com/JinukMoon/catbench) はデータセット・緩和計算・解析を提供し、
+**比較結果（[catbench.org](https://catbench.org) のリーダーボード）もすでに公開**しています。
+ただしそれはある時点での固定的なモデル集合の結果であり、**出たばかりの MLIP はまだ
+リーダーボードに載っておらず**、また与えられた数値を鵜呑みにせず自分たちで再現したい、という
+場面が多くあります。本リポジトリはその上に薄い層を足し、**新しい MLIP（や新しい modal / task /
+分散補正の variant）がリリースされたときに、すぐ自分たちの環境でベンチマーク・比較できる**ことを
+狙いとしています。
 
 - **統一 API でモデルを差し込む**。新しい calculator は
   [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit) 経由で扱えるため、
