@@ -17,6 +17,23 @@
 > import 名は `mlip_adsorption_energy_benchmark`（アンダースコア）です。
 > 設定ファイルも慣習に従い `pyproject.toml` を使用しています。
 
+## このリポジトリの目的（CatBench に加えて）
+
+[CatBench](https://github.com/JinukMoon/catbench) がデータセット・緩和計算・解析を提供します。
+本リポジトリはその上に薄い層を足し、**新しい MLIP（や新しい modal / task / 分散補正の variant）が
+リリースされたときに、すぐ自分たちの環境で検証・比較できる**ことを狙いとしています。
+
+- **統一 API でモデルを差し込む**。新しい calculator は
+  [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit) 経由で扱えるため、
+  出たばかりのモデルの追加も通常は preset/spec の 1 行変更で済み、モデルごとの繋ぎコードが不要。
+- **1 コマンドでローカルでもクラスタでも**。同じコマンドでローカル実行、または TSUBAME4 に
+  （データセット × calculator）ごとにジョブ投入でき、全モデル・全データセットを並列に回せる。
+- **自前のレポート**。サマリ表・ヒートマップ・Pareto 図・calculator ごとの parity 図で、
+  横並び比較と anomaly 解析をすぐに行える。
+
+要するに、CatBench が「ベンチマークのエンジン」、本リポジトリは最新 MLIP に追随して
+モデル比較を再現可能に保つための「自分たち用のハーネス」です。
+
 ## ディレクトリ構成
 
 ```

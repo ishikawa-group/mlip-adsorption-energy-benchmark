@@ -17,6 +17,24 @@ locally or submits jobs on TSUBAME4.
 > package under `src/` is `mlip_adsorption_energy_benchmark` (underscores), and
 > the config file is the conventional `pyproject.toml`.
 
+## Why this repository (in addition to CatBench)
+
+[CatBench](https://github.com/JinukMoon/catbench) already provides the datasets,
+relaxation driver, and analysis. This repository adds a thin layer on top so that,
+**whenever a new MLIP (or a new modal / task / dispersion variant) is released, we can
+verify and compare it in our own environment right away**:
+
+- **Drop-in models via one unified API.** New calculators come through
+  [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit), so adding
+  a just-released model is usually a one-line preset/spec change — no per-model glue code.
+- **One command, local or cluster.** The same command runs a benchmark locally or submits
+  one job per (dataset × calculator) on TSUBAME4, so all models/datasets run in parallel.
+- **In-house reporting.** Our own summary tables, heatmaps, Pareto plots, and
+  per-calculator parity figures make head-to-head comparison and anomaly analysis quick.
+
+In short, CatBench is the benchmarking engine; this repo is the **in-house harness** that
+keeps our model comparisons reproducible and up to date with the latest MLIP releases.
+
 ## Layout
 
 ```
