@@ -109,10 +109,27 @@ pip install -e .
 ```
 
 Core installation includes CatBench but not the large preset MLIP stacks. Install
-the preset backends only when needed:
+only the preset backends needed by the benchmark:
 
 ```bash
+# No NNP preset (default; arbitrary ASE calculator factories still work)
+pip install -e .
+
+# One preset backend
+pip install -e '.[chgnet]'
+pip install -e '.[sevennet]'
+pip install -e '.[mattersim]'
+pip install -e '.[nequip]'
+pip install -e '.[uma]'
+
+# Multiple selected backends
+pip install -e '.[chgnet,sevennet]'
+
+# Every preset backend plus optional D3 support
 pip install -e '.[presets]'
+
+# D3 support without installing every NNP preset
+pip install -e '.[dispersion]'
 ```
 
 `.venv` is git-ignored.

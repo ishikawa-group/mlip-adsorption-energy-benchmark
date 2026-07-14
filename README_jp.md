@@ -109,7 +109,21 @@ pip install -e .
 ```
 
 core 依存には CatBench を含みますが、容量の大きい preset MLIP 群は含みません。
-preset を利用する場合だけ `pip install -e '.[presets]'` を実行します。`.venv` は git 管理外です。
+preset NNP はdefaultではインストールされません。任意のASE Calculator factoryだけを
+使う場合は`pip install -e .`で十分です。必要なbackendだけを選択できます。
+
+```bash
+pip install -e '.[chgnet]'
+pip install -e '.[sevennet]'
+pip install -e '.[mattersim]'
+pip install -e '.[nequip]'
+pip install -e '.[uma]'
+pip install -e '.[chgnet,sevennet]'  # 複数選択
+pip install -e '.[presets]'         # 全backend + D3
+pip install -e '.[dispersion]'      # D3のみ追加
+```
+
+`.venv` は git 管理外です。
 
 ## 任意の ASE Calculator
 
@@ -209,7 +223,7 @@ python scripts/tsubame4/submit_tsubame_jobs.py \
 `--group`, `--save-files`, `--cueq`, `--dry-run`。
 
 `--dispersion` は Grimme-D3(BJ) 分散力補正を有効化します。汎函数(xc)は
-ase-calculator-kit (>= v0.2.2) の方針表に従い model/modal/task ごとに自動選択され
+ase-calculator-kit (v0.3.0) の方針表に従い model/modal/task ごとに自動選択され
 （例: OC20=RPBE, それ以外の多くは PBE, r2SCAN系=r2scan）、訓練時に分散を含むモデル
 （UMA `oc25` 等）は二重計上を避けるため拒否されます。結果は **`<label>-d3`** の別ディレクトリに保存。
 

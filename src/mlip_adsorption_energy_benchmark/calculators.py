@@ -143,8 +143,9 @@ def build_calculator(
         from ase_calculator_kit import get_calculator
     except ImportError as exc:
         raise ImportError(
-            "Preset calculators require the optional 'presets' dependencies. "
-            "Install with `pip install 'mlip-adsorption-energy-benchmark[presets]'`."
+            "Preset calculators require ase-calculator-kit. Install one backend, "
+            "for example `pip install 'mlip-adsorption-energy-benchmark[chgnet]'`, "
+            "or install all with `[presets]`."
         ) from exc
 
     preset = CALCULATOR_PRESETS[preset_name]

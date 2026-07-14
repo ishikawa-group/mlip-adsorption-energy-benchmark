@@ -135,7 +135,7 @@ def heatmap_matplotlib(df: pd.DataFrame, metrics, out_base: Path) -> None:
 
     cmap = plt.get_cmap("viridis").copy()
     cmap.set_bad(color="#dddddd")
-    im = ax.imshow(np.ma.masked_invalid(norm), cmap=cmap, aspect="auto", vmin=0, vmax=1)
+    ax.imshow(np.ma.masked_invalid(norm), cmap=cmap, aspect="auto", vmin=0, vmax=1)
 
     ax.set_xticks(range(n_cols))
     ax.set_xticklabels([m[1] for m in metrics], rotation=40, ha="right", fontsize=12)
@@ -176,7 +176,11 @@ BAR_METRICS: list[tuple[str, str]] = [
 def bars_matplotlib(df: pd.DataFrame, out_png: Path) -> None:
     """One horizontal bar chart per metric, sorted best-first, with a colorbar."""
 
-    metrics = [(c, l) for c, l in BAR_METRICS if c in df.columns and df[c].notna().any()]
+    metrics = [
+        (column, label)
+        for column, label in BAR_METRICS
+        if column in df.columns and df[column].notna().any()
+    ]
     if not metrics:
         return
     n = len(df)
