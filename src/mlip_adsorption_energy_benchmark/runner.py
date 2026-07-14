@@ -12,13 +12,17 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import shutil
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Any
 
 from catbench.adsorption import AdsorptionCalculation
 
 from .benchmarks import ensure_benchmark_data, raw_data_filename
 from .calculators import build_calculator
+from .factories import build_from_factory, load_calculator_factory
 
 
 @contextlib.contextmanager
@@ -101,9 +105,11 @@ def _relocate_calculator_output(bench_dir: Path, calculator: str, mode: str) -> 
 
 def run_adsorption_benchmark(
     benchmark: str,
-    calculator: str,
+    calculator: str | None = None,
     *,
     label: str | None = None,
+    calculator_factory: str | Callable[..., Any] | None = None,
+    factory_kwargs: Mapping[str, Any] | None = None,
     device: str = "auto",
     n_seeds: int = 1,
     result_dir: str | os.PathLike,
@@ -127,6 +133,11 @@ def run_adsorption_benchmark(
     calculator:
         Preset name from :data:`calculators.CALCULATOR_PRESETS` (selects the
         backend); ``model`` / ``task`` / ``modal`` override its defaults.
+    calculator_factory:
+        Arbitrary ASE Calculator factory, either a callable or a
+        ``"module:callable"`` reference. It is invoked once per seed and may
+        accept ``device`` and ``seed`` plus entries from ``factory_kwargs``.
+        Mutually exclusive with ``calculator``.
     label:
         Output-folder / CatBench ``mlip_name`` for this variant. Defaults to
         ``calculator``; pass a distinct label (e.g. ``"sevennet-omat24"``) when
@@ -140,7 +151,17 @@ def run_adsorption_benchmark(
         Optional overrides of the preset defaults.
     """
 
+    if calculator_factory is not None and calculator is not None:
+        raise ValueError("Use either a preset calculator or calculator_factory, not both.")
+    if calculator_factory is None and calculator is None:
+        raise ValueError("A preset calculator or calculator_factory is required.")
+    if calculator_factory is not None and not label:
+        raise ValueError("label is required when using calculator_factory.")
+
     label = label or calculator
+    assert label is not None
+    if label in {".", ".."} or re.search(r"[^A-Za-z0-9_.-]", label):
+        raise ValueError("label may contain only letters, digits, '.', '_' and '-'.")
     result_dir = Path(result_dir).resolve()
     data_dir = Path(data_dir).resolve()
     bench_dir = result_dir / benchmark
@@ -155,18 +176,35 @@ def run_adsorption_benchmark(
         raise FileNotFoundError(f"Dataset not visible to CatBench at {expected}")
 
     # 2) Build N identical calculators (reproducibility seeds).
-    calculators = [
-        build_calculator(
-            calculator,
-            device=device,
-            model=model,
-            task=task,
-            modal=modal,
-            dispersion=dispersion,
-            enable_cueq=enable_cueq,
+    if calculator_factory is not None:
+        factory = (
+            load_calculator_factory(calculator_factory)
+            if isinstance(calculator_factory, str)
+            else calculator_factory
         )
-        for _ in range(max(1, int(n_seeds)))
-    ]
+        calculators = [
+            build_from_factory(
+                factory,
+                device=device,
+                seed=seed,
+                factory_kwargs=factory_kwargs,
+            )
+            for seed in range(max(1, int(n_seeds)))
+        ]
+    else:
+        assert calculator is not None
+        calculators = [
+            build_calculator(
+                calculator,
+                device=device,
+                model=model,
+                task=task,
+                modal=modal,
+                dispersion=dispersion,
+                enable_cueq=enable_cueq,
+            )
+            for _ in range(max(1, int(n_seeds)))
+        ]
 
     # 3) Run CatBench inside the per-benchmark working directory.
     with _working_directory(bench_dir):

@@ -24,9 +24,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from ase_calculator_kit import get_calculator
-
-
 @dataclass(frozen=True)
 class CalculatorPreset:
     """A named, adsorption-ready configuration for one MLIP backend.
@@ -141,6 +138,14 @@ def build_calculator(
     if preset_name not in CALCULATOR_PRESETS:
         allowed = ", ".join(ALL_CALCULATORS)
         raise ValueError(f"Unknown calculator {preset_name!r}. Allowed: {allowed}")
+
+    try:
+        from ase_calculator_kit import get_calculator
+    except ImportError as exc:
+        raise ImportError(
+            "Preset calculators require the optional 'presets' dependencies. "
+            "Install with `pip install 'mlip-adsorption-energy-benchmark[presets]'`."
+        ) from exc
 
     preset = CALCULATOR_PRESETS[preset_name]
     kwargs: dict[str, Any] = dict(preset.kwargs)

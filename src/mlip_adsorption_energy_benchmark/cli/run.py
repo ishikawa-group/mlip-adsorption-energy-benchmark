@@ -20,11 +20,13 @@ Output is written to ``result/<benchmark>/<calculator>/``.
 from __future__ import annotations
 
 import argparse
+import sys
 import traceback
 from pathlib import Path
 
 from .. import (
     KNOWN_BENCHMARKS,
+    parse_factory_kwargs,
     resolve_calculator_specs,
     run_adsorption_benchmark,
 )
@@ -35,7 +37,7 @@ DEFAULT_RESULT_DIR = REPO_ROOT / "result"
 DEFAULT_DATA_DIR = REPO_ROOT / "data"
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Benchmark MLIP calculators on adsorption-energy datasets.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -47,12 +49,28 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--calculator",
-        default="all",
+        default=None,
         help=(
             "'all' or a comma-separated list of calculator specs "
             "'<preset>[:key=value;...]' where key is model/task/modal "
             "(e.g. 'uma:task=oc22,sevennet:modal=omat24')."
         ),
+    )
+    parser.add_argument(
+        "--calculator-factory",
+        default=None,
+        metavar="MODULE:CALLABLE",
+        help="Arbitrary ASE Calculator factory. Mutually exclusive with --calculator.",
+    )
+    parser.add_argument(
+        "--factory-kwargs-json",
+        default=None,
+        help="Factory keyword arguments as a JSON object or @path/to/file.json.",
+    )
+    parser.add_argument(
+        "--label",
+        default=None,
+        help="Filesystem-safe result label (required with --calculator-factory).",
     )
     parser.add_argument(
         "--device",
@@ -97,22 +115,68 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--result-dir", default=str(DEFAULT_RESULT_DIR))
     parser.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR))
-    return parser.parse_args()
+    args = parser.parse_args(argv)
+    if args.calculator_factory and args.calculator:
+        parser.error("--calculator-factory and --calculator are mutually exclusive")
+    if args.calculator_factory and not args.label:
+        parser.error("--label is required with --calculator-factory")
+    if args.calculator_factory and any(
+        (args.model, args.task, args.modal, args.dispersion, args.cueq)
+    ):
+        parser.error(
+            "preset overrides/--dispersion/--cueq are not valid with "
+            "--calculator-factory; pass model-specific values via --factory-kwargs-json"
+        )
+    if not args.calculator_factory and args.factory_kwargs_json:
+        parser.error("--factory-kwargs-json requires --calculator-factory")
+    if not args.calculator_factory and args.label:
+        parser.error("--label is only valid with --calculator-factory")
+    if not args.calculator_factory and args.calculator is None:
+        args.calculator = "all"
+    return args
 
 
 def main() -> int:
     args = parse_args()
-    jobs = resolve_calculator_specs(args.calculator)
+    jobs = [] if args.calculator_factory else resolve_calculator_specs(args.calculator)
+    factory_kwargs = parse_factory_kwargs(args.factory_kwargs_json)
 
     print("==== MLIP adsorption-energy benchmark ====")
     print(f"Benchmark   : {args.benchmark}")
-    print(f"Calculators : {', '.join(j.label for j in jobs)}")
+    if args.calculator_factory:
+        print(f"Factory     : {args.calculator_factory}")
+        print(f"Label       : {args.label}")
+    else:
+        print(f"Calculators : {', '.join(j.label for j in jobs)}")
     print(f"Device      : {args.device}")
     print(f"Seeds       : {args.n_seeds}")
     print(f"Mode        : {args.mode}")
     print(f"Result dir  : {args.result_dir}")
     print(f"Data dir    : {args.data_dir}")
     print()
+
+    if args.calculator_factory:
+        try:
+            out = run_adsorption_benchmark(
+                args.benchmark,
+                label=args.label,
+                calculator_factory=args.calculator_factory,
+                factory_kwargs=factory_kwargs,
+                device=args.device,
+                n_seeds=args.n_seeds,
+                result_dir=args.result_dir,
+                data_dir=args.data_dir,
+                f_crit_relax=args.f_crit_relax,
+                n_crit_relax=args.n_crit_relax,
+                mode=args.mode,
+                save_files=not args.no_save_files,
+            )
+            print(f"  -> done: {out}")
+            return 0
+        except Exception:
+            print(f"  -> FAILED for calculator {args.label!r}:", file=sys.stderr)
+            traceback.print_exc()
+            return 1
 
     failures = 0
     for job in jobs:

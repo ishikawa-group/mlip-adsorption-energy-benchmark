@@ -7,11 +7,12 @@ machine-learning interatomic potentials (MLIPs) against DFT references.
 
 - Benchmark engine (datasets, relaxations, analysis/reporting):
   [CatBench](https://github.com/JinukMoon/catbench)
-- MLIP calculator factory (UMA / SevenNet / MatterSim / CHGNet / NequIP behind one API):
+- Optional MLIP presets (UMA / SevenNet / MatterSim / CHGNet / NequIP behind one API):
   [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit)
 
 This repository glues the two together so a single command runs a benchmark
-locally or submits jobs on TSUBAME4.
+locally or submits jobs on TSUBAME4. Any ASE Calculator can be supplied through
+a small Python factory; installing all preset model stacks is not required.
 
 > **Naming**: Python package names cannot contain hyphens, so the importable
 > package under `src/` is `mlip_adsorption_energy_benchmark` (underscores), and
@@ -29,8 +30,9 @@ them as given. This repository is a thin layer on top so that, **whenever a new 
 it in our own environment right away**:
 
 - **Drop-in models via one unified API.** New calculators come through
-  [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit), so adding
-  a just-released model is usually a one-line preset/spec change — no per-model glue code.
+  [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit), or through
+  the public `module:callable` factory API. New and in-house calculators therefore do
+  not need to be added to this repository's preset registry.
 - **One command, local or cluster.** The same command runs a benchmark locally or submits
   one job per (dataset × calculator) on TSUBAME4, so all models/datasets run in parallel.
 - **In-house reporting.** Our own summary tables, heatmaps, Pareto plots, and
@@ -44,7 +46,8 @@ keeps our model comparisons reproducible and up to date with the latest MLIP rel
 ```
 mlip-adsorption-energy-benchmark/
 ├── src/mlip_adsorption_energy_benchmark/  # package (functions + CLIs)
-│   ├── calculators.py   # calculator presets + build_calculator()
+│   ├── calculators.py   # optional presets + build_calculator()
+│   ├── factories.py     # arbitrary ASE Calculator factory loading
 │   ├── benchmarks.py     # dataset definitions + download cache
 │   ├── runner.py         # CatBench run wrapper (output-layout control)
 │   ├── analysis.py       # analysis wrapper (parity plots / Excel / summary CSV)
@@ -97,7 +100,7 @@ Names are passed straight to CatBench (fetched from Zenodo). Common ones:
 
 ## Installation
 
-Python `>=3.12,<3.14` (ase-calculator-kit constraint). CUDA recommended.
+Python `>=3.12,<3.14`. CUDA is recommended for MLIP calculations.
 
 ```bash
 python3.12 -m venv .venv
@@ -105,7 +108,55 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-CatBench and ase-calculator-kit are installed from GitHub. `.venv` is git-ignored.
+Core installation includes CatBench but not the large preset MLIP stacks. Install
+the preset backends only when needed:
+
+```bash
+pip install -e '.[presets]'
+```
+
+`.venv` is git-ignored.
+
+## Arbitrary ASE calculators
+
+Expose a callable that returns one ASE `Calculator`. The runner injects `device`
+and `seed` only when the callable accepts them; model-specific values are supplied
+as JSON. The model is instantiated once per CatBench seed and reused for every
+relaxation step.
+
+```python
+# my_model_adapter.py
+from my_model import MyASECalculator
+
+def build_calculator(*, checkpoint, device="cpu", seed=0):
+    return MyASECalculator(checkpoint=checkpoint, device=device, seed=seed)
+```
+
+```bash
+python -m mlip_adsorption_energy_benchmark.cli.run \
+  --benchmark ComerGeneralized2024 \
+  --calculator-factory my_model_adapter:build_calculator \
+  --factory-kwargs-json '{"checkpoint":"result/models/model.pt"}' \
+  --label my-model --device cuda
+```
+
+Programmatic use accepts the callable directly:
+
+```python
+from mlip_adsorption_energy_benchmark import run_adsorption_benchmark
+from my_model_adapter import build_calculator
+
+run_adsorption_benchmark(
+    "ComerGeneralized2024",
+    calculator_factory=build_calculator,
+    factory_kwargs={"checkpoint": "result/models/model.pt"},
+    label="my-model",
+    device="cuda",
+    n_seeds=1,
+    result_dir="result",
+    data_dir="data",
+)
+```
 
 ## Local usage
 
@@ -171,14 +222,22 @@ python scripts/tsubame4/submit_tsubame_jobs.py \
 # preview qsub commands without submitting
 python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 --calculator all --dry-run
+
+# arbitrary calculator: one job per dataset
+python scripts/tsubame4/submit_tsubame_jobs.py \
+    --benchmark ComerGeneralized2024,MamunHighT2019,FG_dataset \
+    --calculator-factory my_model_adapter:build_calculator \
+    --factory-kwargs-json '{"checkpoint":"result/models/model.pt"}' \
+    --label my-model --dry-run
 ```
 
-- Job settings: `-g tga-ishikawalab`, `gpu_h=1`, `h_rt=24:00:00`, `module load cuda`
+- Job settings: `-g tga-ishikawalab`, `gpu_h=1`, `h_rt=23:55:00`, `module load cuda`
 - Default device is `cuda`
 - Logs go to `result/<benchmark>/log/tsubame_jobs/<calculator>/`
 
 Key flags: `--device`, `--n-seeds`, `--mode`, `--model/--task/--modal` (preset
-overrides), `--group`, `--save-files`, `--cueq`, `--dry-run`.
+overrides), `--calculator-factory`, `--factory-kwargs-json`, `--label`, `--group`,
+`--save-files`, `--cueq`, `--dry-run`.
 
 `--cueq` enables SevenNet's CuEquivariance acceleration (needs cuequivariance
 installed). Its results are saved under a separate **`<label>-cueq`** folder

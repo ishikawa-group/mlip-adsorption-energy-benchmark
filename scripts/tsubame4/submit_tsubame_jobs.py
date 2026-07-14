@@ -64,8 +64,24 @@ def parse_args() -> argparse.Namespace:
         help="'all' or comma-separated dataset names: " + ", ".join(KNOWN_BENCHMARKS),
     )
     parser.add_argument(
+        "--calculator-factory",
+        default=None,
+        metavar="MODULE:CALLABLE",
+        help="Arbitrary ASE Calculator factory; mutually exclusive with --calculator.",
+    )
+    parser.add_argument(
+        "--factory-kwargs-json",
+        default=None,
+        help="Factory keyword arguments as a JSON object or @path/to/file.json.",
+    )
+    parser.add_argument(
+        "--label",
+        default=None,
+        help="Result/job label required with --calculator-factory.",
+    )
+    parser.add_argument(
         "--calculator",
-        default="all",
+        default=None,
         help=(
             "'all' or comma-separated calculator specs "
             "'<preset>[:key=value;...]' (key in model/task/modal). "
@@ -111,7 +127,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--result-dir", default=str(DEFAULT_RESULT_DIR))
     parser.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR))
     parser.add_argument("--dry-run", action="store_true", help="Print qsub commands only.")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.calculator_factory and args.calculator:
+        parser.error("--calculator-factory and --calculator are mutually exclusive")
+    if args.calculator_factory and not args.label:
+        parser.error("--label is required with --calculator-factory")
+    if args.calculator_factory and any(
+        (args.model, args.task, args.modal, args.dispersion, args.cueq)
+    ):
+        parser.error(
+            "preset overrides/--dispersion/--cueq are not valid with "
+            "--calculator-factory; use --factory-kwargs-json"
+        )
+    if not args.calculator_factory and args.factory_kwargs_json:
+        parser.error("--factory-kwargs-json requires --calculator-factory")
+    if not args.calculator_factory and args.label:
+        parser.error("--label is only valid with --calculator-factory")
+    if not args.calculator_factory and args.calculator is None:
+        args.calculator = "all"
+    return args
 
 
 def main() -> int:
@@ -121,14 +155,22 @@ def main() -> int:
         return 1
 
     benchmarks = _parse_benchmarks(args.benchmark)
-    jobs = resolve_calculator_specs(args.calculator)
+    jobs = (
+        [None]
+        if args.calculator_factory
+        else list(resolve_calculator_specs(args.calculator))
+    )
     result_dir = Path(args.result_dir).resolve()
     data_dir = Path(args.data_dir).resolve()
 
     print(f"Project     : {PROJECT_DIR}")
     print(f"Run script  : {RUN_SCRIPT}")
     print(f"Benchmarks  : {', '.join(benchmarks)}")
-    print(f"Calculators : {', '.join(j.label for j in jobs)}")
+    if args.calculator_factory:
+        print(f"Factory     : {args.calculator_factory}")
+        print(f"Label       : {args.label}")
+    else:
+        print(f"Calculators : {', '.join(j.label for j in jobs if j is not None)}")
     print(f"Device      : {args.device}")
     print(f"CuEquivar.  : {bool(args.cueq)} (label suffix '-cueq')")
     print(f"Dispersion  : {bool(args.dispersion)} (D3, label suffix '-d3')")
@@ -147,10 +189,17 @@ def main() -> int:
             # One job per (benchmark, calculator variant). The spec string is
             # passed through CALCULATOR so the run script reproduces this exact
             # variant; the label keys the job name and result folder.
-            spec = spec_to_string(job)
+            spec = spec_to_string(job) if job is not None else ""
             # Distinct identity per variant: '-cueq' (CuEquivariance) and/or
             # '-d3' (dispersion) suffixes so these never clash with plain runs.
-            label = job.label + ("-cueq" if args.cueq else "") + ("-d3" if args.dispersion else "")
+            label = (
+                args.label
+                if job is None
+                else job.label
+                + ("-cueq" if args.cueq else "")
+                + ("-d3" if args.dispersion else "")
+            )
+            assert label is not None
 
             # Resume safety: a finished run has been relocated to
             # result/<benchmark>/<label>/<label>_result.json. Skip it so a
@@ -186,7 +235,16 @@ def main() -> int:
             env = os.environ.copy()
             env["PROJECT_DIR"] = str(PROJECT_DIR)
             env["BENCHMARK"] = benchmark
-            env["CALCULATOR"] = spec
+            if args.calculator_factory:
+                env["CALCULATOR_FACTORY"] = str(args.calculator_factory)
+                env["FACTORY_KWARGS_JSON"] = str(args.factory_kwargs_json or "")
+                env["LABEL"] = label
+                env.pop("CALCULATOR", None)
+            else:
+                env["CALCULATOR"] = spec
+                env.pop("CALCULATOR_FACTORY", None)
+                env.pop("FACTORY_KWARGS_JSON", None)
+                env.pop("LABEL", None)
             env["DEVICE"] = str(args.device)
             env["N_SEEDS"] = str(int(args.n_seeds))
             env["MODE"] = str(args.mode)
@@ -202,11 +260,13 @@ def main() -> int:
                 else:
                     env.pop(key, None)
 
-            print(f"Submitting: {benchmark} / {spec} (job={job_name})")
+            identity = args.calculator_factory or spec
+            print(f"Submitting: {benchmark} / {identity} (job={job_name})")
             if args.dry_run:
                 print("  Command:", " ".join(cmd))
                 print(
-                    "  Env    : PROJECT_DIR, BENCHMARK, CALCULATOR, DEVICE, N_SEEDS, "
+                    "  Env    : PROJECT_DIR, BENCHMARK, CALCULATOR or "
+                    "CALCULATOR_FACTORY+LABEL, DEVICE, N_SEEDS, "
                     "MODE, [MODEL], [TASK], [MODAL], DISPERSION, CUEQ, SAVE_FILES, "
                     "RESULT_DIR, DATA_DIR"
                 )

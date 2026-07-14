@@ -5,8 +5,8 @@ A thin workflow layer that benchmarks machine-learning interatomic potentials
 
 * `CatBench <https://github.com/JinukMoon/catbench>`_ -- the benchmark datasets,
   relaxation driver, and analysis/reporting.
-* `ase-calculator-kit <https://github.com/ishikawa-group/ase-calculator-kit>`_
-  -- a unified factory for the MLIP ASE calculators.
+* arbitrary user-supplied ASE Calculator factories, with optional built-in MLIP
+  presets provided by `ase-calculator-kit`.
 
 Typical use is through the CLIs in the ``cli`` subpackage (run via
 ``python -m mlip_adsorption_energy_benchmark.cli.run`` etc.) and the TSUBAME4
@@ -29,6 +29,7 @@ from .calculators import (
     spec_to_string,
 )
 from .runner import run_adsorption_benchmark
+from .factories import build_from_factory, load_calculator_factory, parse_factory_kwargs
 
 __all__ = [
     "KNOWN_BENCHMARKS",
@@ -42,7 +43,10 @@ __all__ = [
     "resolve_calculator_specs",
     "spec_to_string",
     "run_adsorption_benchmark",
+    "build_from_factory",
+    "load_calculator_factory",
+    "parse_factory_kwargs",
     "analyze",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"

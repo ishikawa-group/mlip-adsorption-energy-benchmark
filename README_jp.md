@@ -7,11 +7,13 @@
 
 - ベンチマーク本体（データセット・緩和計算・解析/レポート）:
   [CatBench](https://github.com/JinukMoon/catbench)
-- MLIP calculator の生成（UMA / SevenNet / MatterSim / CHGNet / NequIP を統一 API で）:
+- 任意の ASE Calculator factory、およびオプションの MLIP preset
+  （UMA / SevenNet / MatterSim / CHGNet / NequIP を統一 API で）:
   [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit)
 
 本リポジトリは上記 2 つを繋ぎ、コマンド 1 つでローカル実行・TSUBAME4 へのジョブ投入が
-できるようにしたものです。
+できるようにしたものです。任意の ASE Calculator は小さな Python factory から渡せるため、
+利用しない MLIP backend 一式をインストールする必要はありません。
 
 > **命名について**: Python のパッケージ名にハイフンは使えないため、`src/` 配下の
 > import 名は `mlip_adsorption_energy_benchmark`（アンダースコア）です。
@@ -28,8 +30,9 @@
 狙いとしています。
 
 - **統一 API でモデルを差し込む**。新しい calculator は
-  [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit) 経由で扱えるため、
-  出たばかりのモデルの追加も通常は preset/spec の 1 行変更で済み、モデルごとの繋ぎコードが不要。
+  [ase-calculator-kit](https://github.com/ishikawa-group/ase-calculator-kit) 経由、または公開
+  `module:callable` factory API で扱えます。新規・研究室内モデルを preset registry に追加せず
+  ベンチマークできます。
 - **1 コマンドでローカルでもクラスタでも**。同じコマンドでローカル実行、または TSUBAME4 に
   （データセット × calculator）ごとにジョブ投入でき、全モデル・全データセットを並列に回せる。
 - **自前のレポート**。サマリ表・ヒートマップ・Pareto 図・calculator ごとの parity 図で、
@@ -43,7 +46,8 @@
 ```
 mlip-adsorption-energy-benchmark/
 ├── src/mlip_adsorption_energy_benchmark/  # パッケージ本体（関数 + CLI）
-│   ├── calculators.py   # calculator preset 定義 + build_calculator()
+│   ├── calculators.py   # optional calculator preset + build_calculator()
+│   ├── factories.py     # 任意 ASE Calculator factory の読込
 │   ├── benchmarks.py     # データセット定義 + ダウンロードキャッシュ
 │   ├── runner.py         # CatBench 実行ラッパ（出力レイアウト制御）
 │   ├── analysis.py       # 解析ラッパ（parity plot / Excel / summary CSV）
@@ -96,7 +100,7 @@ CatBench が Zenodo から取得するデータセット名をそのまま指定
 
 ## インストール
 
-Python は `>=3.12,<3.14`（ase-calculator-kit の制約）。CUDA 環境推奨。
+Python は `>=3.12,<3.14`。MLIP 計算には CUDA 環境を推奨します。
 
 ```bash
 python3.12 -m venv .venv
@@ -104,7 +108,30 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-依存（CatBench / ase-calculator-kit）は GitHub から取得します。`.venv` は git 管理外です。
+core 依存には CatBench を含みますが、容量の大きい preset MLIP 群は含みません。
+preset を利用する場合だけ `pip install -e '.[presets]'` を実行します。`.venv` は git 管理外です。
+
+## 任意の ASE Calculator
+
+ASE `Calculator` を1つ返す callable を用意します。runner は callable が受理する場合だけ
+`device` と `seed` を渡し、モデル固有値は JSON で指定します。モデルは CatBench seed ごとに
+一度だけ生成され、relaxation step 間で再利用されます。
+
+```python
+# my_model_adapter.py
+from my_model import MyASECalculator
+
+def build_calculator(*, checkpoint, device="cpu", seed=0):
+    return MyASECalculator(checkpoint=checkpoint, device=device, seed=seed)
+```
+
+```bash
+python -m mlip_adsorption_energy_benchmark.cli.run \
+  --benchmark ComerGeneralized2024 \
+  --calculator-factory my_model_adapter:build_calculator \
+  --factory-kwargs-json '{"checkpoint":"result/models/model.pt"}' \
+  --label my-model --device cuda
+```
 
 ## ローカル実行
 
@@ -165,9 +192,16 @@ python scripts/tsubame4/submit_tsubame_jobs.py \
 # 投入せずコマンドだけ確認
 python scripts/tsubame4/submit_tsubame_jobs.py \
     --benchmark MamunHighT2019,ComerGeneralized2024 --calculator all --dry-run
+
+# 任意 calculator を3 datasetへ（datasetごとに1 job）
+python scripts/tsubame4/submit_tsubame_jobs.py \
+    --benchmark ComerGeneralized2024,MamunHighT2019,FG_dataset \
+    --calculator-factory my_model_adapter:build_calculator \
+    --factory-kwargs-json '{"checkpoint":"result/models/model.pt"}' \
+    --label my-model --dry-run
 ```
 
-- ジョブ設定: `-g tga-ishikawalab`、`gpu_h=1`、`h_rt=24:00:00`、`module load cuda`
+- ジョブ設定: `-g tga-ishikawalab`、`gpu_h=1`、`h_rt=23:55:00`、`module load cuda`
 - デバイス既定は `cuda`
 - ログは `result/<benchmark>/log/tsubame_jobs/<calculator>/` に出力
 

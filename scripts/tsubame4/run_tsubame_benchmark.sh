@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -cwd
 #$ -l gpu_h=1
-#$ -l h_rt=24:00:00
+#$ -l h_rt=23:55:00
 
 # One TSUBAME4 job = one (benchmark, calculator) adsorption-energy run.
 # Configuration is passed through environment variables (see submit script).
@@ -15,8 +15,12 @@ if [ -z "${BENCHMARK:-}" ]; then
   echo "Error: BENCHMARK is not set" >&2
   exit 1
 fi
-if [ -z "${CALCULATOR:-}" ]; then
-  echo "Error: CALCULATOR is not set" >&2
+if [ -z "${CALCULATOR:-}" ] && [ -z "${CALCULATOR_FACTORY:-}" ]; then
+  echo "Error: CALCULATOR or CALCULATOR_FACTORY is required" >&2
+  exit 1
+fi
+if [ -n "${CALCULATOR_FACTORY:-}" ] && [ -z "${LABEL:-}" ]; then
+  echo "Error: LABEL is required with CALCULATOR_FACTORY" >&2
   exit 1
 fi
 
@@ -41,7 +45,9 @@ DATA_DIR="${DATA_DIR:-${PROJECT_DIR}/data}"
 echo "==== MLIP adsorption-energy benchmark (TSUBAME4) ===="
 echo "PROJECT_DIR : ${PROJECT_DIR}"
 echo "BENCHMARK   : ${BENCHMARK}"
-echo "CALCULATOR  : ${CALCULATOR}"
+echo "CALCULATOR  : ${CALCULATOR:-}"
+echo "FACTORY     : ${CALCULATOR_FACTORY:-}"
+echo "LABEL       : ${LABEL:-}"
 echo "DEVICE      : ${DEVICE}"
 echo "N_SEEDS     : ${N_SEEDS}"
 echo "MODE        : ${MODE}"
@@ -70,7 +76,6 @@ unset DISPLAY || true
 
 CMD=(python -u -m mlip_adsorption_energy_benchmark.cli.run
   --benchmark "${BENCHMARK}"
-  --calculator "${CALCULATOR}"
   --device "${DEVICE}"
   --n-seeds "${N_SEEDS}"
   --mode "${MODE}"
@@ -79,6 +84,15 @@ CMD=(python -u -m mlip_adsorption_energy_benchmark.cli.run
   --result-dir "${RESULT_DIR}"
   --data-dir "${DATA_DIR}"
 )
+
+if [ -n "${CALCULATOR_FACTORY:-}" ]; then
+  CMD+=(--calculator-factory "${CALCULATOR_FACTORY}" --label "${LABEL}")
+  if [ -n "${FACTORY_KWARGS_JSON:-}" ]; then
+    CMD+=(--factory-kwargs-json "${FACTORY_KWARGS_JSON}")
+  fi
+else
+  CMD+=(--calculator "${CALCULATOR}")
+fi
 
 if [ -n "${MODEL}" ]; then
   CMD+=(--model "${MODEL}")

@@ -4,10 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlip-adsorption-energy-benchmark"
-version = "0.1.0"
-description = "Benchmark machine-learning interatomic potentials on adsorption energies via CatBench and ase-calculator-kit."
+version = "0.3.0"
+description = "Benchmark arbitrary ASE calculators and MLIP presets on adsorption energies via CatBench."
 readme = "README.md"
-# Upper bound inherited from ase-calculator-kit (MatterSim / fairchem-core).
 requires-python = ">=3.12,<3.14"
 authors = [
   { name = "Ishikawa Group" }
@@ -21,10 +20,12 @@ dependencies = [
   "openpyxl",          # read CatBench's xlsx report to export a summary CSV
   "plotly",            # interactive HTML visualizations
   "catbench @ git+https://github.com/JinukMoon/catbench.git",
-  "ase-calculator-kit @ git+https://github.com/ishikawa-group/ase-calculator-kit.git@v0.2.2",
 ]
 
 [project.optional-dependencies]
+presets = [
+  "ase-calculator-kit @ git+https://github.com/ishikawa-group/ase-calculator-kit.git@v0.2.2",
+]
 dev = [
   "pytest>=8.0",
 ]
